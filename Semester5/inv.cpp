@@ -124,17 +124,15 @@ int solve(double *a, double *aInv, int n) {
 		}
 	}	
 	print(a, n);
-	double *rInv;
-	rInv = new double[n * n];
+
 	for (int j = 0; j < n; j++)
 		for (int i = n - 1; i >= 0; i--) {	
-			rInv[i * n + j] = (i == j ? 1 : 0);
+			aInv[i * n + j] = q[i * n + j];
 			for (int k = i + 1; k < n; k++)
-				rInv[i * n + j] -=  a[i * n + k] * rInv[k * n + j];
-			rInv[i * n + j] /= a[i * n + i];
+				aInv[i * n + j] -=  a[i * n + k] * aInv[k * n + j];
+			aInv[i * n + j] /= a[i * n + i];
 		}
-	mult(rInv, q, aInv, n);
-	delete[] rInv;
+
 	delete[] q;	
 	return 0;
 }
