@@ -1,7 +1,7 @@
 #include <mpi.h>
 #include <bits/stdc++.h>
 #define corner 5
-#define eps 1e10-8
+#define eps 1e-8
 
 
 using namespace std;
@@ -23,7 +23,7 @@ double *Cos, *Sin;
 int main(int argc, char** argv)
 {
 	
-	int n = 9;
+	int n = 5;
 	double *a = NULL, *aInv = NULL;
 //	double a[] = {1, 2, 3, 4};
 //	double aInv[] = {-2, 1, 1.5, -0.5};
@@ -35,7 +35,7 @@ int main(int argc, char** argv)
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-	n_expanded = n + size - n % size;
+	n_expanded = n % size == 0 ? n : n + size - n % size;
 	a = new double[n * n_expanded];
 	aInv = new double[n * n_expanded];
 	memset(a, 0, n * n_expanded * sizeof(double));
@@ -43,18 +43,26 @@ int main(int argc, char** argv)
 	
 	generate(a, n, formula2);
 	generate(aInv, n, formula2);
+	if (rank == 0){
+		cout << "A" << endl;
+		print(a, n, n);
+	}
 	solve(a, aInv, n);
-	print(aInv, n, n);
+	if (rank == 0){
+		cout << "A^-1" << endl;
+		print(aInv, n, n);
+	}
 	double r = residual(a, aInv, n);
-	if (rank == 0)
+	if (rank == 0){
 		printf("%f\n", r);
+	}
 	delete[] a;
 	delete[] aInv;
 	MPI_Finalize();
 	return 0;
 }
 
-int solve(double *a, double *aInv, int n) {
+int solve(double *a, double *aInv, int n) { 	
 	
 	
 	double *q = NULL, *rInv = NULL, *a_part = NULL, *q_part = NULL;
@@ -66,14 +74,10 @@ int solve(double *a, double *aInv, int n) {
 	Cos = new double[n - 1];
 	Sin = new double[n - 1];
 
-	if (rank == 0){
-    	memset(q, 0, n * n * sizeof(double));
-		for (int i = 0; i < n; i++)
-			q[i * n + i] = 1;		
-	}
+   	memset(q, 0, n * n * sizeof(double));
+	for (int i = 0; i < n; i++)
+		q[i * n + i] = 1;		
 	
-	MPI_Bcast(q, n * n_expanded, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
 	for (int k = 0; k < n - 1; k++) { 
 	
 		if (rank == 0) {				
@@ -81,6 +85,7 @@ int solve(double *a, double *aInv, int n) {
 			for (int l = k + 1; l < n; l++)	{	
 				
 				double x = a[k * n + k], y = a[k * n + l];
+//				cout << x << " ! " << y << endl;
 				double mod = sqrt(x * x + y * y);
 				if (fabs(x) < eps && fabs(y) < eps) {
 					continue;
@@ -89,10 +94,10 @@ int solve(double *a, double *aInv, int n) {
 				Cos[l - k - 1] = x / mod;
 				Sin[l - k - 1] = -y / mod;
 				
-				cout << Cos[l - k - 1] << " " << Sin[l - k - 1] << endl;
+//				cout << Cos[l - k - 1] << " " << Sin[l - k - 1] << endl;
 				
-				a[k * n + k] = mod;
-				a[k * n + l] = 0;					
+//				a[k * n + k] = mod;
+//				a[l * n + k] = 0;					
 			}
 		}
 
@@ -104,36 +109,49 @@ int solve(double *a, double *aInv, int n) {
 
 		MPI_Scatter(q, n * n_expanded / size, MPI_DOUBLE, q_part, 
 		n * n_expanded / size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		for (int m = 0; m < n_expanded / size; m++) {	
 
-		for (int l = k + 1; l < n; l++)	{		
-//		for (int m = from[thread_number]; m < to[thread_number]; m++) {	
+			for (int l = k + 1; l < n; l++)	{		
+//			for (int m = from[thread_number]; m < to[thread_number]; m++) {	
 
-			for (int m = 0; m < n * n_expanded / size; m++) {	
 				double temp_k, temp_l;
-				if (m > k) {
+				if (m >= k) {
 					temp_k = Cos[l - k - 1] * a_part[m * n + k] - Sin[l - k - 1] * a_part[m * n + l];
 					temp_l = Sin[l - k - 1] * a_part[m * n + k] + Cos[l - k - 1] * a_part[m * n + l];
-					a[k * n + m] = temp_k;
-					a[l * n + m] = temp_l;
+					a_part[m * n + k] = temp_k;
+					a_part[m * n + l] = temp_l;
 				}			
-				temp_k = Cos[l - k - 1] * q[m * n + k] - Sin[l - k - 1] * q[m * n + l];
-				temp_l = Sin[l - k - 1] * q[m * n + k] + Cos[l - k - 1] * q[m * n + l];
-				q[m * n + k] = temp_k;
-				q[m * n + l] = temp_l;
+				temp_k = Cos[l - k - 1] * q_part[m * n + k] - Sin[l - k - 1] * q_part[m * n + l];
+				temp_l = Sin[l - k - 1] * q_part[m * n + k] + Cos[l - k - 1] * q_part[m * n + l];
+				q_part[m * n + k] = temp_k;
+				q_part[m * n + l] = temp_l;
 			}		
+			
+			if (rank == 0)
+				print(a_part, n, n_expanded);
 		}
 
 		MPI_Gather(a_part, n * n_expanded / size, MPI_DOUBLE, a, 
 		n * n_expanded / size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
+		MPI_Gather(q_part, n * n_expanded / size, MPI_DOUBLE, q, 
+		n * n_expanded / size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-        if (fabs(a[k * n + k]) < eps) {
+        if (rank == 0 && fabs(a[k * n + k]) < eps) {
 			printf("Error, degenerate matrix\n");
 			return -1;
 		}
 	
 	}
+	
+	if (rank == 0) {
+		cout << "R" << endl;
+		print(a, n, n);
+		cout << "Q" << endl;
+		print(q, n, n);
+	}
 
+	MPI_Barrier(MPI_COMM_WORLD);
 	for (int j = rank; j < n; j += size)
 		for (int i = n - 1; i >= 0; i--) {	
 			rInv[i * n + j] = (i == j ? 1 : 0);
@@ -148,8 +166,8 @@ int solve(double *a, double *aInv, int n) {
 		mult(rInv, q, aInv, n, n);
 	
 	if (rank == 0) {
-		print(a, n, n);
-		print(q, n, n);
+//		print(a, n, n);
+//		print(q, n, n);
 		delete[] rInv;
 	}
 	return 0;
@@ -162,7 +180,7 @@ double residual(double *a, double *aInv, int n) {
 
 	if (rank == 0)
 	{
-		print(a, n_expanded, n);
+//		print(a, n_expanded, n);
 	}
 
 
@@ -197,7 +215,7 @@ double residual(double *a, double *aInv, int n) {
     
 	if (rank == 0)
 	{
-		print(res_matrix, n, n);
+//		print(res_matrix, n, n);
  		for (int i = 0; i < n; i++)
 			res_matrix[i * n + i] -= 1;
 		double res = 0;
@@ -239,7 +257,7 @@ void print(double *a, int m, int n)
 	printf("\n");
 	for (int i = 0; i < m; i++) {
 		for (int j = 0; j < n; j++)
-			printf("%-7.2f ", a[i * n + j]);
+			printf("%-7.2f ", a[j * n + i]);
 		printf("\n");	
 	}
 }
