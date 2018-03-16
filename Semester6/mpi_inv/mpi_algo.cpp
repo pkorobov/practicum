@@ -1,13 +1,16 @@
 #include <mpi.h>
 #include <bits/stdc++.h>
 #include "mpi_algo.h"
+#include "mpi_etc.h"
 #define corner 5
 #define eps 1e-8
-
+#define  I(a, x, y) a[x * n + y]
+#define  I_t(a, x, y) a[y * n + x]
 
 using namespace std;
 
 static double *Cos, *Sin;
+extern int rank, size, n_expanded;
 
 
 int solve(double *a, double *aInv, int n) { 	
@@ -24,7 +27,7 @@ int solve(double *a, double *aInv, int n) {
 
    	memset(q, 0, n * n * sizeof(double));
 	for (int i = 0; i < n; i++)
-		q[i * n + i] = 1;		
+		I(q, i, i) = 1;		
 	
 	for (int k = 0; k < n - 1; k++) { 
 	
@@ -32,7 +35,7 @@ int solve(double *a, double *aInv, int n) {
 		
 			for (int l = k + 1; l < n; l++)	{	
 				
-				double x = a[k * n + k], y = a[k * n + l];
+				double x = I(a, k, k), y = I(a, l, k);
 //				cout << x << " ! " << y << endl;
 				double mod = sqrt(x * x + y * y);
 				if (fabs(x) < eps && fabs(y) < eps) {
@@ -57,26 +60,21 @@ int solve(double *a, double *aInv, int n) {
 
 		MPI_Scatter(q, n * n_expanded / size, MPI_DOUBLE, q_part, 
 		n * n_expanded / size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
 		for (int m = 0; m < n_expanded / size; m++) {	
-
 			for (int l = k + 1; l < n; l++)	{		
-//			for (int m = from[thread_number]; m < to[thread_number]; m++) {	
-
 				double temp_k, temp_l;
 				if (m >= k) {
-					temp_k = Cos[l - k - 1] * a_part[m * n + k] - Sin[l - k - 1] * a_part[m * n + l];
-					temp_l = Sin[l - k - 1] * a_part[m * n + k] + Cos[l - k - 1] * a_part[m * n + l];
-					a_part[m * n + k] = temp_k;
-					a_part[m * n + l] = temp_l;
+					temp_k = Cos[l - k - 1] * I(a, k, m) - Sin[l - k - 1] * I(a, l, m);
+					temp_l = Sin[l - k - 1] * I(a, k, m) + Cos[l - k - 1] * I(a, l, m);
+					I(a, k, m) = temp_k;
+					I(a, l, m) = temp_l;
 				}			
-				temp_k = Cos[l - k - 1] * q_part[m * n + k] - Sin[l - k - 1] * q_part[m * n + l];
-				temp_l = Sin[l - k - 1] * q_part[m * n + k] + Cos[l - k - 1] * q_part[m * n + l];
-				q_part[m * n + k] = temp_k;
-				q_part[m * n + l] = temp_l;
+				temp_k = Cos[l - k - 1] * I(q, k, m) - Sin[l - k - 1] * I(q, l, m);
+				temp_l = Sin[l - k - 1] * I(q, k, m) + Cos[l - k - 1] * I(q, l, m);
+				I(q, k, m)  = temp_k;
+				I(q, l, m)  = temp_l;
 			}		
-			
-			if (rank == 0)
-				print(a_part, n, n_expanded);
 		}
 
 		MPI_Gather(a_part, n * n_expanded / size, MPI_DOUBLE, a, 

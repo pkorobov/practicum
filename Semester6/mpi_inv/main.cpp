@@ -2,6 +2,7 @@
 #include <bits/stdc++.h>
 #include "mpi_etc.h"
 #include "mpi_algo.h"
+#include "mpi_residual.h"
 
 #define corner 5
 #define eps 1e-8
