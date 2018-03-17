@@ -14,7 +14,7 @@ int rank, size, n_expanded;
 int main(int argc, char** argv)
 {
 	
-	int n = 5;
+	int n = 3;
 	double *a = NULL, *aInv = NULL;
 //	double a[] = {1, 2, 3, 4};
 //	double aInv[] = {-2, 1, 1.5, -0.5};
