@@ -14,7 +14,7 @@ int rank, size, n_expanded;
 int main(int argc, char** argv)
 {
 	
-	int n = 3;
+	int n = 1000;
 	double *a = NULL, *aInv = NULL;
 //	double a[] = {1, 2, 3, 4};
 //	double aInv[] = {-2, 1, 1.5, -0.5};
@@ -37,16 +37,28 @@ int main(int argc, char** argv)
 		cout << "A" << endl;
 		print(a, n, n);
 	}
+
+	double t1, t2, dt;
+	t1 = MPI_Wtime();
+	
 	solve(a, aInv, n);
 	if (rank == 0){
 		cout << "A^-1" << endl;
 		print(aInv, n, n);
 	}
+	
+	t2 = MPI_Wtime();
+	dt = t2 - t1;
+
+	if (rank == 0)
+		cout << "Time: " << dt << " seconds" << endl;
 	generate(a, n, formula2);
 	double r = residual(a, aInv, n);
+	
 	if (rank == 0){
-		printf("%f\n", r);
+		cout << "Residual: " << r << endl;
 	}
+	
 	delete[] a;
 	delete[] aInv;
 	MPI_Finalize();
