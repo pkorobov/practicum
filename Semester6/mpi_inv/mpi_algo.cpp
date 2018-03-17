@@ -103,18 +103,18 @@ int solve(double *a, double *aInv, int n) {
 	MPI_Bcast(a, n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	MPI_Bcast(q, n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-	MPI_Scatter(q, n * s, MPI_DOUBLE, aInv_part, 
-	n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+//	MPI_Scatter(aInv, n * s, MPI_DOUBLE, aInv_part, 
+//	n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-	for (int j = 0; j < s && j + s * rank < n; j ++)
+	for (int j = 0; j < s && j + s * rank < n; j++)
 		for (int i = n - 1; i >= 0; i--) {	
-			I(aInv, i, j) = q[i + (j + s) * n];//I(q, i, j);
+			I(aInv_part, i, j) = q[i + (j + s * rank) * n];//I(q, i, j);
 			for (int k = i + 1; k < n; k++)
-				I(aInv, i, j) -=  I(a, i, k) * I(aInv, k, j);
-			I(aInv, i, j) /= I(a, i, i);
+				I(aInv_part, i, j) -=  I(a, i, k) * I(aInv_part, k, j);
+			I(aInv_part, i, j) /= I(a, i, i);
 		}
 		
-	MPI_Gather(aInv_part, n * s, MPI_DOUBLE, a, 
+	MPI_Gather(aInv_part, n * s, MPI_DOUBLE, aInv, 
 	n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 	delete[] q;
