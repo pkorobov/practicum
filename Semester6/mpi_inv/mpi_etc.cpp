@@ -24,9 +24,24 @@ void print(double *a, int m, int n)
 	for (int i = 0; i < min(m, corner); i++) {
 		for (int j = 0; j < min(n, corner); j++)
 			printf("%-7.2f ", a[j * n + i]);
+		if (n > corner)
+			printf("%-7s %-7.2f ", "...", a[i + (n - 1) * n]);
 		printf("\n");	
 	}
+
+	if (n > corner)
+	{
+		for (int j = 0; j <= corner + 1; j++)
+			printf("%-7s ", "...");
+		printf("\n");
+		for (int j = 0; j < corner; j++)
+			printf("%-7.2f ", a[(n - 1) * n + j]);
+		printf("%-7s ", "...");
+		printf("%-7.2f ", a[(n - 1) * n + n - 1]);
+	}
+	printf("\n");
 }
+
 
 double formula1(int i, int j) {
 	return 1.0 / (i + j + 1);

@@ -18,6 +18,7 @@ int solve(double *a, double *aInv, int n) {
 	
 	double *q = NULL, *rInv = NULL, *a_part = NULL, *aInv_part = NULL, *q_part = NULL;
 
+
 	q = new double[n * n_expanded];
 	rInv = new double[n * n];
 	aInv_part = new double[n * n_expanded / size];
@@ -28,9 +29,13 @@ int solve(double *a, double *aInv, int n) {
 
 	int s = n_expanded / size;
 
-   	memset(q, 0, n * n * sizeof(double));
-	for (int i = 0; i < n; i++)
-		I(q, i, i) = 1;		
+   	memset(q_part, 0, n * s * sizeof(double));
+	for (int i = 0; i < s; i++)
+		I(q_part, i + rank * s, i) = 1;		
+//		q_part[i + rank * s + i * n] = 1;		
+		
+	double t1, t2, dt, ta, tb, tsum = 0;
+	t1 = MPI_Wtime();
 	
 	for (int k = 0; k < n - 1; k++) { 
 	
@@ -55,14 +60,19 @@ int solve(double *a, double *aInv, int n) {
 			}
 		}
 
+
 		MPI_Bcast(Cos, n - 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 		MPI_Bcast(Sin, n - 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-	
+		
+		ta = MPI_Wtime();
 		MPI_Scatter(a, n * s, MPI_DOUBLE, a_part, 
 		n * n_expanded / size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		tb = MPI_Wtime();
 
-		MPI_Scatter(q, n * s, MPI_DOUBLE, q_part, 
-		n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+//		MPI_Scatter(q, n * s, MPI_DOUBLE, q_part, 
+//		n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+		tsum += tb - ta;
 
 		for (int m = 0; m < s; m++) {	
 			for (int l = k + 1; l < n; l++)	{		
@@ -80,28 +90,41 @@ int solve(double *a, double *aInv, int n) {
 			}		
 		}
 
+		ta = MPI_Wtime();
 		MPI_Gather(a_part, n * s, MPI_DOUBLE, a, 
 		n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-		MPI_Gather(q_part, n * s, MPI_DOUBLE, q, 
-		n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		tb = MPI_Wtime();
 
+		tsum += tb - ta; 
+		
         if (rank == 0 && fabs(a[k * n + k]) < eps) {
 			printf("Error, degenerate matrix\n");
 			return -1;
 		}
 	
 	}
-	
+
+	t2 = MPI_Wtime();
+
+
+	if (rank == 0)
+	{
+		dt = t2 - t1;
+		cout << "Rotation time: " << dt << " seconds";
+		cout << "Rotation messages time: " << tsum << " seconds";
+	}
+
+	MPI_Bcast(a, n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	MPI_Allgather(q_part, n * s, MPI_DOUBLE, q, 
+	n * s, MPI_DOUBLE, MPI_COMM_WORLD);
+
 	if (rank == 0) {
 		cout << "R" << endl;
 		print(a, n, n);
 		cout << "Q" << endl;
 		print(q, n, n);
 	}
-
-	MPI_Bcast(a, n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-	MPI_Bcast(q, n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 //	MPI_Scatter(aInv, n * s, MPI_DOUBLE, aInv_part, 
 //	n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -116,6 +139,7 @@ int solve(double *a, double *aInv, int n) {
 		
 	MPI_Gather(aInv_part, n * s, MPI_DOUBLE, aInv, 
 	n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	
 
 	delete[] q;
 	return 0;
