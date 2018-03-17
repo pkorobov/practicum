@@ -10,9 +10,9 @@ using namespace std;
 void mult(double *a, double *b, double *c, int m, int n) {
 	for (int i = 0; i < m; i++)
 		for (int j = 0; j < n; j++) {
-			I(c, i, j) = 0;
+			c[i * n + j] = 0;
 			for (int k = 0; k < n; k++)
-				I(c, i, j) += I(a, i, k) * I(b, k, j);
+				c[i * n + j] += a[i * n + k] * b[k * n + j];
 		}	
 }
 
@@ -30,8 +30,8 @@ void trans(double *a, int m, int n)
 void print(double *a, int m, int n)
 {
 	printf("\n");
-	for (int i = 0; i < m; i++) {
-		for (int j = 0; j < n; j++)
+	for (int i = 0; i < n; i++) { //число строк
+		for (int j = 0; j < m; j++) //число столбцов
 			printf("%-7.2f ", a[j * n + i]);
 		printf("\n");	
 	}
@@ -52,5 +52,5 @@ double formula3(int i, int j) {
 void generate(double *a, int n, double formula(int, int)) {
 	for (int i = 0; i < n; i++)
 		for (int j = 0; j < n; j++)
-			a[i * n + j] = formula(i, j);
+			a[i * n + j] = j > i ? formula(i, j) : formula(i, j);
 }
