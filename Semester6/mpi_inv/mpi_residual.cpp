@@ -12,6 +12,8 @@ double residual(double *a, double *aInv, int n) {
 
 	int mem = n * n_expanded / size;
 
+	MPI_Bcast(aInv, n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	
 	if (rank == 0)
 	{
 		print(a, n_expanded, n);
@@ -37,7 +39,14 @@ double residual(double *a, double *aInv, int n) {
 	MPI_Scatter(a, mem, MPI_DOUBLE,
     a_part, mem, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-	mult(a_part, aInv, res_part, mem / n, n);
+	for (int j = 0; j < mem / n; j++)
+		for (int i = 0; i < n; i++) {
+			res_part[i + j * n] = 0;
+			for (int k = 0; k < n; k++)
+				res_part[i + j * n] += a[k + i * n] * aInv[j + k * n];
+		}	
+
+//	mult(a_part, aInv, res_part, mem / n, n);
 	
 //	print(res_part, n, m);
 	

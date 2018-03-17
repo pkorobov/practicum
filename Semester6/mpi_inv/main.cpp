@@ -33,7 +33,6 @@ int main(int argc, char** argv)
 	memset(aInv, 0, n * n_expanded * sizeof(double));
 	
 	generate(a, n, formula2);
-	generate(aInv, n, formula2);
 	if (rank == 0){
 		cout << "A" << endl;
 		print(a, n, n);
@@ -43,6 +42,7 @@ int main(int argc, char** argv)
 		cout << "A^-1" << endl;
 		print(aInv, n, n);
 	}
+	generate(a, n, formula2);
 	double r = residual(a, aInv, n);
 	if (rank == 0){
 		printf("%f\n", r);
