@@ -4,8 +4,8 @@
 #include "mpi_etc.h"
 #define corner 5
 #define eps 1e-8
-#define  I(a, x, y) a[x + y * n]
-#define  I_t(a, x, y) a[x * n + y]
+#define  I(a, x, y) a[x * n + y]
+#define  I_t(a, x, y) a[y * n + x]
 
 using namespace std;
 
@@ -15,9 +15,11 @@ extern int rank, size, n_expanded;
 
 int solve(double *a, double *aInv, int n) { 	
 	
-	double *q = NULL, *a_part = NULL, *q_part = NULL;
+	
+	double *q = NULL, *rInv = NULL, *a_part = NULL, *q_part = NULL;
 
 	q = new double[n * n_expanded];
+	rInv = new double[n * n];
 	a_part = new double[n * n_expanded / size];
 	q_part = new double[n * n_expanded / size];
 	Cos = new double[n - 1];
@@ -45,8 +47,8 @@ int solve(double *a, double *aInv, int n) {
 				
 //				cout << Cos[l - k - 1] << " " << Sin[l - k - 1] << endl;
 				
-				I(a, k, k) = mod;
-				I(a, l, k) = 0;					
+//				a[k * n + k] = mod;
+//				a[l * n + k] = 0;					
 			}
 		}
 
@@ -58,103 +60,61 @@ int solve(double *a, double *aInv, int n) {
 
 		MPI_Scatter(q, n * n_expanded / size, MPI_DOUBLE, q_part, 
 		n * n_expanded / size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-		/*
-		MPI_Barrier(MPI_COMM_WORLD);
-		if (rank == 0) {
-			printf("0:\n");
-			print(a_part, n_expanded / size, n);
-//			print(a_part, n, n_expanded / size);
-		}
-		
-		MPI_Barrier(MPI_COMM_WORLD);
 
-		MPI_Barrier(MPI_COMM_WORLD);
-		if (rank == 1) {
-			printf("1:\n");
-			print(a_part, n_expanded / size, n);
-//			print(a_part, n, n_expanded / size);
-		}
-//		return -2;
-*/
-//		MPI_Barrier(MPI_COMM_WORLD);
-		
 		for (int m = 0; m < n_expanded / size; m++) {	
 			for (int l = k + 1; l < n; l++)	{		
 				double temp_k, temp_l;
-				if (m + n_expanded / size * rank > k) {
-					temp_k = Cos[l - k - 1] * I(a_part, k, m) - Sin[l - k - 1] * I(a_part, l, m);
-					temp_l = Sin[l - k - 1] * I(a_part, k, m) + Cos[l - k - 1] * I(a_part, l, m);
-					I(a_part, k, m) = temp_k;
-					I(a_part, l, m) = temp_l;
+				if (m >= k) {
+					temp_k = Cos[l - k - 1] * I(a, k, m) - Sin[l - k - 1] * I(a, l, m);
+					temp_l = Sin[l - k - 1] * I(a, k, m) + Cos[l - k - 1] * I(a, l, m);
+					I(a, k, m) = temp_k;
+					I(a, l, m) = temp_l;
 				}			
-				temp_k = Cos[l - k - 1] * I(q_part, k, m) - Sin[l - k - 1] * I(q_part, l, m);
-				temp_l = Sin[l - k - 1] * I(q_part, k, m) + Cos[l - k - 1] * I(q_part, l, m);
-				I(q_part, k, m) = temp_k;
-				I(q_part, l, m) = temp_l;
-/*				if (rank == 1) {
-					printf("R>>>>>>>>>>>>>>\n");
-					print(a_part, n_expanded / size, n);
-					printf("-------------:\n");
-	
-					printf("Q>>>>>>>>>>>>>>\n");
-					print(q_part, n_expanded / size, n);
-					printf("-------------:\n");
-				}
-*/
-//				print(a_part, n, n_expanded / size);
+				temp_k = Cos[l - k - 1] * I(q, k, m) - Sin[l - k - 1] * I(q, l, m);
+				temp_l = Sin[l - k - 1] * I(q, k, m) + Cos[l - k - 1] * I(q, l, m);
+				I(q, k, m)  = temp_k;
+				I(q, l, m)  = temp_l;
+			}		
 		}
-
-		}
-
 
 		MPI_Gather(a_part, n * n_expanded / size, MPI_DOUBLE, a, 
 		n * n_expanded / size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 		MPI_Gather(q_part, n * n_expanded / size, MPI_DOUBLE, q, 
 		n * n_expanded / size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-				
-        if (fabs(a[k * n + k]) < eps) {
-//			print(a, n, n);
-			printf("%d: Error, degenerate matrix\n", rank);
+
+        if (rank == 0 && fabs(a[k * n + k]) < eps) {
+			printf("Error, degenerate matrix\n");
 			return -1;
 		}
+	
 	}
-
-	MPI_Bcast(a, n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-	MPI_Bcast(q, n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-/*	
+	
 	if (rank == 0) {
 		cout << "R" << endl;
 		print(a, n, n);
 		cout << "Q" << endl;
 		print(q, n, n);
 	}
-*/
-	double *aInv_part = NULL;
-	aInv_part = new double[n * n_expanded / size];
 
-	MPI_Scatter(aInv, n * n_expanded / size, MPI_DOUBLE, aInv_part, 
-	n * n_expanded / size, MPI_DOUBLE, 0, MPI_COMM_WORLD);	
-	
-	int s = n_expanded / size;
-	for (int j = 0; j < s && j + s * rank < n; j++)
+	MPI_Barrier(MPI_COMM_WORLD);
+	for (int j = rank; j < n; j += size)
 		for (int i = n - 1; i >= 0; i--) {	
-			if (i == n - 1)
-			{
-//				print(q, n, n);
-//				printf("%f ------ %d ------- %d -------- %d\n", q[i + n * (j + s * rank)], j, rank, rank * s);
-			}
-			I(aInv_part, i, j) = q[i + n * (j + s * rank)]; // I(q, i, j + rank * s) всё ломает
-//			printf(">>>>>>>\n%d\n-------\n", j + s * rank);
+			rInv[i * n + j] = (i == j ? 1 : 0);
 			for (int k = i + 1; k < n; k++)
-				I(aInv_part, i, j) -=  I(a, i, k) * I(aInv_part, k, j);
-			I(aInv_part, i, j) /= I(a, i, i);
+				rInv[i * n + j] -=  a[i * n + k] * rInv[k * n + j];
+			rInv[i * n + j] /= a[i * n + i];
 		}
+	MPI_Barrier(MPI_COMM_WORLD);
 
-	MPI_Gather(aInv_part, n * n_expanded / size, MPI_DOUBLE, aInv, 
-	n * n_expanded / size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-		
-	delete[] q;	
+	if (rank == 0)
+//		trans(q, n, n);
+		mult(rInv, q, aInv, n, n);
+	
+	if (rank == 0) {
+//		print(a, n, n);
+//		print(q, n, n);
+		delete[] rInv;
+	}
 	return 0;
 }

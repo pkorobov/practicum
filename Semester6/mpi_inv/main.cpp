@@ -14,8 +14,12 @@ int rank, size, n_expanded;
 int main(int argc, char** argv)
 {
 	
-	int n = 2000;
+	int n = 5;
 	double *a = NULL, *aInv = NULL;
+//	double a[] = {1, 2, 3, 4};
+//	double aInv[] = {-2, 1, 1.5, -0.5};
+
+//	MPI_Status status;
 
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -28,34 +32,21 @@ int main(int argc, char** argv)
 	memset(a, 0, n * n_expanded * sizeof(double));
 	memset(aInv, 0, n * n_expanded * sizeof(double));
 	
-	generate(a, n, formula3);
+	generate(a, n, formula2);
+	generate(aInv, n, formula2);
 	if (rank == 0){
 		cout << "A" << endl;
-//		print(a, n_expanded, n);
+		print(a, n, n);
 	}
-	
-	double t1, t2, dt;
-	t1 = MPI_Wtime();
-
-	if (solve(a, aInv, n) < 0)
-		return -1;
-	
-	t2 = MPI_Wtime();
-	dt = t2 - t1;
-	if (rank == 0)
-		cout << "Time: " << dt << " seconds" << endl;
+	solve(a, aInv, n);
 	if (rank == 0){
 		cout << "A^-1" << endl;
-//		print(aInv, n, n);
-	}	
-
-	generate(a, n, formula3);
-
-	double r = residual(a, aInv, n);
-		if (rank == 0){
-		cout << "Residual: " << r << endl;
+		print(aInv, n, n);
 	}
-
+	double r = residual(a, aInv, n);
+	if (rank == 0){
+		printf("%f\n", r);
+	}
 	delete[] a;
 	delete[] aInv;
 	MPI_Finalize();

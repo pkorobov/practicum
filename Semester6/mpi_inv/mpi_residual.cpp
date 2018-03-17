@@ -12,39 +12,34 @@ double residual(double *a, double *aInv, int n) {
 
 	int mem = n * n_expanded / size;
 
-	double *a_part = NULL;
+	if (rank == 0)
+	{
+		print(a, n_expanded, n);
+	}
+
+
+	double *a_part;
 	a_part = new double[mem];
 
-	double *res_part = NULL;
+	double *res_part;
 	res_part = new double[mem];
 	
-	double *res_matrix = NULL;
-
-	MPI_Bcast(aInv, n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	double *res_matrix;
 
 	if (rank == 0)
 	{	
 		res_matrix = new double[n_expanded * n];
 		memset(res_matrix, 0, n_expanded * n * sizeof(double));
 	}
-
-	trans(aInv, n_expanded, n);
-//	trans(a, n_expanded, n);
+	
+//	trans(aInv, n_expanded, n);
 
 	MPI_Scatter(a, mem, MPI_DOUBLE,
     a_part, mem, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-	for (int i = 0; i < mem / n; i++)
-		for (int j = 0; j < n; j++) {
-			res_part[i * n + j] = 0;
-			for (int k = 0; k < n; k++)
-				res_part[i * n + j] += a_part[i * n + k] * aInv[j * n + k];
-		}	
-
-//	mult(a_part, aInv, res_part, mem / n, n);
+	mult(a_part, aInv, res_part, mem / n, n);
 	
-//	if (rank == 1)
-//		print(res_part, mem / n, n);
+//	print(res_part, n, m);
 	
 	MPI_Gather(res_part, mem, MPI_DOUBLE,
     res_matrix, mem, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -52,7 +47,7 @@ double residual(double *a, double *aInv, int n) {
     
 	if (rank == 0)
 	{
-//		print(res_matrix, n_expanded, n);
+		print(res_matrix, n, n);
  		for (int i = 0; i < n; i++)
 			res_matrix[i * n + i] -= 1;
 		double res = 0;
