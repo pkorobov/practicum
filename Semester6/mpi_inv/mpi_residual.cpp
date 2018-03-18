@@ -13,12 +13,6 @@ double residual(double *a, double *aInv, int n) {
 	int s = n_expanded / size;
 
 	MPI_Bcast(aInv, n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-	
-	if (rank == 0)
-	{
-//		print(a, n_expanded, n);
-	}
-
 
 	double *a_part;
 	a_part = new double[n * s];
@@ -67,5 +61,9 @@ double residual(double *a, double *aInv, int n) {
 		delete[] res_matrix;
 		return res;
 	}
+
+	delete[] a_part;
+	delete[] res_part;
+
 	return 0;
 }

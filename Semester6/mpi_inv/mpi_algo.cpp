@@ -20,7 +20,6 @@ int solve(double *a, double *aInv, int n) {
 
 
 	q = new double[n * n_expanded];
-	rInv = new double[n * n];
 	aInv_part = new double[n * n_expanded / size];
 	a_part = new double[n * n_expanded / size];
 	q_part = new double[n * n_expanded / size];
@@ -35,16 +34,28 @@ int solve(double *a, double *aInv, int n) {
 //		q_part[i + rank * s + i * n] = 1;		
 		
 	double t1, t2, dt, ta, tb, tsum = 0;
+	
 	t1 = MPI_Wtime();
 	
-	for (int k = 0; k < n - 1; k++) { 
+	ta = MPI_Wtime();
+
+	MPI_Scatter(a, n * s, MPI_DOUBLE, a_part, 
+	n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+	tb = MPI_Wtime();
+	tsum += tb - ta;
 	
-		if (rank == 0) {				
+	for (int k = 0; k < n - 1; k++) { 
+		int root = -1;
 		
+		for (int t = 0; t < size; t++)
+			if (t * s <= k && k < (t + 1) * s) 	
+				root = t;
+
+		if (rank == root) {				
 			for (int l = k + 1; l < n; l++)	{	
 				
-				double x = I(a, k, k), y = I(a, l, k);
-//				cout << x << " ! " << y << endl;
+				double x = I(a_part, k, k % s), y = I(a_part, l, k % s);
 				double mod = sqrt(x * x + y * y);
 				if (fabs(x) < eps && fabs(y) < eps) {
 					continue;
@@ -53,26 +64,13 @@ int solve(double *a, double *aInv, int n) {
 				Cos[l - k - 1] = x / mod;
 				Sin[l - k - 1] = -y / mod;
 				
-//				cout << Cos[l - k - 1] << " " << Sin[l - k - 1] << endl;
-				
-				I(a, k, k) = mod;
-				I(a, l, k) = 0;					
+				I(a_part, k, k % s) = mod;
+				I(a_part, l, k % s) = 0;					
 			}
 		}
-
-
-		MPI_Bcast(Cos, n - 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-		MPI_Bcast(Sin, n - 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-		
-		ta = MPI_Wtime();
-		MPI_Scatter(a, n * s, MPI_DOUBLE, a_part, 
-		n * n_expanded / size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-		tb = MPI_Wtime();
-
-//		MPI_Scatter(q, n * s, MPI_DOUBLE, q_part, 
-//		n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-		tsum += tb - ta;
+	
+		MPI_Bcast(Cos, n - 1, MPI_DOUBLE, root, MPI_COMM_WORLD);
+		MPI_Bcast(Sin, n - 1, MPI_DOUBLE, root, MPI_COMM_WORLD);
 
 		for (int m = 0; m < s; m++) {	
 			for (int l = k + 1; l < n; l++)	{		
@@ -89,35 +87,26 @@ int solve(double *a, double *aInv, int n) {
 				I(q_part, l, m)  = temp_l;
 			}		
 		}
-
-		ta = MPI_Wtime();
-		MPI_Gather(a_part, n * s, MPI_DOUBLE, a, 
-		n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-		tb = MPI_Wtime();
-
-		tsum += tb - ta; 
-		
-        if (rank == 0 && fabs(a[k * n + k]) < eps) {
-			printf("Error, degenerate matrix\n");
-			return -1;
-		}
-	
 	}
 
 	t2 = MPI_Wtime();
-
 
 	if (rank == 0)
 	{
 		dt = t2 - t1;
 		cout << "Rotation time: " << dt << " seconds";
-		cout << "Rotation messages time: " << tsum << " seconds";
 	}
 
-	MPI_Bcast(a, n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	ta = MPI_Wtime();
+
+	MPI_Allgather(a_part, n * s, MPI_DOUBLE, a, 
+	n * s, MPI_DOUBLE, MPI_COMM_WORLD);
+
 	MPI_Allgather(q_part, n * s, MPI_DOUBLE, q, 
 	n * s, MPI_DOUBLE, MPI_COMM_WORLD);
+
+	tb = MPI_Wtime();
+	tsum += tb - ta;
 
 	if (rank == 0) {
 		cout << "R" << endl;
@@ -126,8 +115,7 @@ int solve(double *a, double *aInv, int n) {
 		print(q, n, n);
 	}
 
-//	MPI_Scatter(aInv, n * s, MPI_DOUBLE, aInv_part, 
-//	n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	t1 = MPI_Wtime();
 
 	for (int j = 0; j < s && j + s * rank < n; j++)
 		for (int i = n - 1; i >= 0; i--) {	
@@ -136,11 +124,29 @@ int solve(double *a, double *aInv, int n) {
 				I(aInv_part, i, j) -=  I(a, i, k) * I(aInv_part, k, j);
 			I(aInv_part, i, j) /= I(a, i, i);
 		}
+
+	t2 = MPI_Wtime();
+	if (rank == 0)
+	{
+		dt = t2 - t1;
+		cout << "Reverse gauss time: " << dt << " seconds";
+	}
+
+	ta = MPI_Wtime();
 		
 	MPI_Gather(aInv_part, n * s, MPI_DOUBLE, aInv, 
 	n * s, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-	
 
+	tb = MPI_Wtime();
+	tsum += tb - ta;
+	
+	if (rank == 0)
+		cout << "Mesages time: " << tsum << endl;
 	delete[] q;
+	delete[] q_part;
+	delete[] a_part;
+	delete[] aInv_part;
+	delete[] Sin;
+	delete[] Cos;
 	return 0;
 }
