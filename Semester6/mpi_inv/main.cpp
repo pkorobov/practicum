@@ -13,8 +13,9 @@ int rank, size, n_expanded;
 
 int main(int argc, char** argv)
 {
-	
+	char *t;
 	int n = 1000;
+	n = strtol(argv[1], &t, 10);
 	double *a = NULL, *aInv = NULL;
 //	double a[] = {1, 2, 3, 4};
 //	double aInv[] = {-2, 1, 1.5, -0.5};

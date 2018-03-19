@@ -20,7 +20,7 @@ double residual(double *a, double *aInv, int n) {
 	double *res_part;
 	res_part = new double[n * s];
 	
-	double *res_matrix;
+	double *res_matrix = NULL;
 
 	if (rank == 0)
 	{	
@@ -59,6 +59,8 @@ double residual(double *a, double *aInv, int n) {
 			res = max(res, preRes);
 		}
 		delete[] res_matrix;
+		delete[] a_part;
+		delete[] res_part;
 		return res;
 	}
 

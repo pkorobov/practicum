@@ -15,10 +15,7 @@ extern int rank, size, n_expanded;
 
 int solve(double *a, double *aInv, int n) { 	
 	
-	
-	double *q = NULL, *rInv = NULL, *a_part = NULL, *aInv_part = NULL, *q_part = NULL;
-
-
+	double *q = NULL, *a_part = NULL, *aInv_part = NULL, *q_part = NULL;   
 	q = new double[n * n_expanded];
 	aInv_part = new double[n * n_expanded / size];
 	a_part = new double[n * n_expanded / size];
@@ -48,9 +45,7 @@ int solve(double *a, double *aInv, int n) {
 	for (int k = 0; k < n - 1; k++) { 
 		int root = -1;
 		
-		for (int t = 0; t < size; t++)
-			if (t * s <= k && k < (t + 1) * s) 	
-				root = t;
+		root = k / s;
 
 		if (rank == root) {				
 			for (int l = k + 1; l < n; l++)	{	
@@ -129,7 +124,7 @@ int solve(double *a, double *aInv, int n) {
 	if (rank == 0)
 	{
 		dt = t2 - t1;
-		cout << "Reverse gauss time: " << dt << " seconds";
+		cout << "Reverse gauss time: " << dt << " seconds" << endl;
 	}
 
 	ta = MPI_Wtime();
