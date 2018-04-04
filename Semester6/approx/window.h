@@ -14,18 +14,18 @@ private:
   double a;
   double b;
   int n;
-  double (*f) (double);
 
 public:
-  Window (QWidget *parent);
+  double(*f) (double);
+  Window(QWidget *parent);
 
-  QSize minimumSizeHint () const;
-  QSize sizeHint () const;
+  QSize minimumSizeHint() const;
+  QSize sizeHint() const;
 
-  int parse_command_line (int argc, char *argv[]);
+  int parse_command_line(int argc, char *argv[]);
 
 public slots:
-  void change_func ();
+  void change_func();
 
 protected:
   void paintEvent (QPaintEvent *event);
