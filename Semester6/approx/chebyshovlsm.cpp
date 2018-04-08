@@ -98,7 +98,7 @@ double ChebyshovLSM::IntB(int i, double x)
         return -0.5 * qSqrt(1 - x * x) * (1.0 / (i - 1) * U(i - 2, x) + 1.0 / (i + 1) * U(i, x));
 }
 
-void ChebyshovLSM::fit()
+void ChebyshovLSM::method_init()
 {
     double *c, *d, *u;
 
@@ -150,7 +150,7 @@ void ChebyshovLSM::fit()
     }
 }
 
-double ChebyshovLSM::Pf(double x)
+double ChebyshovLSM::method_compute(double x)
 {
     double value = 0;
     for (int i = 0; i < n; i++)

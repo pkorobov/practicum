@@ -26,11 +26,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp \
         window.cpp \
-    chebyshovlsm.cpp
+    chebyshovlsm.cpp \
+    cubicsplines.cpp
 
 HEADERS += \
         window.h \
-    chebyshovlsm.h
+    chebyshovlsm.h \
+    cubicsplines.h
 
 FORMS += \
         window.ui
