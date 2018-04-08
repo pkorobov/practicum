@@ -9,8 +9,6 @@
 //n - степень многочлена Чебышева
 double f_default(double x)
 {
-//    return qSin(x);
-//    return qSin(x) / qSqrt(1 + x * x);
       return qCos(x);
 }
 
@@ -21,9 +19,9 @@ ChebyshovLSM::ChebyshovLSM()
     n = 5;
     N = 8;
     f = f_default;
-    alpha = new double[n];
+    state = new double[n];
     x = new double[N + 1];
-    memset(alpha, 0, n * sizeof(double));
+    memset(state, 0, n * sizeof(double));
     memset(x, 0, (N + 1) * sizeof(double));
 }
 
@@ -34,9 +32,9 @@ ChebyshovLSM::ChebyshovLSM(double (*f_)(double), double a_, double b_, int n_, i
     b = b_;
     n = n_;
     N = N_;
-    alpha = new double[n];
+    state = new double[n];
     x = new double[N + 1];
-    memset(alpha, 0, n * sizeof(double));
+    memset(state, 0, n * sizeof(double));
     memset(x, 0, (N + 1) * sizeof(double));
 }
 
@@ -47,7 +45,7 @@ ChebyshovLSM::ChebyshovLSM(double (*f_)(double), double a_, double b_, int n_, i
 */
 ChebyshovLSM::~ChebyshovLSM()
 {
-    delete[] alpha;
+    delete[] state;
 }
 
 double ChebyshovLSM::f_(double x)
@@ -98,7 +96,7 @@ double ChebyshovLSM::IntB(int i, double x)
         return -0.5 * qSqrt(1 - x * x) * (1.0 / (i - 1) * U(i - 2, x) + 1.0 / (i + 1) * U(i, x));
 }
 
-void ChebyshovLSM::fit()
+void ChebyshovLSM::method_init()
 {
     double *c, *d, *u;
 
@@ -106,17 +104,18 @@ void ChebyshovLSM::fit()
     c = new double[n * (N + 1)];
     d = new double[n * (N + 1)];
 
-    double delta_x = (b - a) / N;
-    for (int i = 0; i <= N; i++)
-        x[i] = a + delta_x * i;
+
     qsrand(QTime::currentTime().msec());
+
+    double delta = (b - a) / N;
+    for (int i = 0; i <= N; i++)
+        x[i] = a + delta * i;
+
     for (int i = 0; i <= N; i++)
     {
         x[i] = (2 * x[i] - (b + a)) / (b - a);
 //        x[i] = -1 + (double) qrand() / RAND_MAX * 2;
     }
-    x[0] = -1;
-    x[N] = 1;
     for (int i = 0; i < n; i++)
     {
         for (int j = 0; j <= N; j++)
@@ -139,21 +138,21 @@ void ChebyshovLSM::fit()
 
     for (int i = 0; i < n; i++)
     {
-        alpha[i] = 0.0;
+        state[i] = 0.0;
         for (int j = 0; j <= N; j++)
         {
-            alpha[i] += u[i * (N + 1) + j] * f_(x[j]);
+            state[i] += u[i * (N + 1) + j] * f_(x[j]);
         }
-        alpha[i] *=  2 / M_PI;
-        if (i == 0) alpha[i] /= 2;
-//        qDebug() << i << " " << alpha[i];
+        state[i] *=  2 / M_PI;
+        if (i == 0) state[i] /= 2;
+//        qDebug() << i << " " << state[i];
     }
 }
 
-double ChebyshovLSM::Pf(double x)
+double ChebyshovLSM::method_compute(double x)
 {
     double value = 0;
     for (int i = 0; i < n; i++)
-        value += alpha[i] * T(i, x);
+        value += state[i] * T(i, x);
     return value;
 }

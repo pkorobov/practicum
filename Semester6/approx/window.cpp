@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include "window.h"
 #include "chebyshovlsm.h"
+#include "cubicsplines.h"
 
 #define DEFAULT_A -10
 #define DEFAULT_B 10
@@ -111,21 +112,35 @@ void Window::paintEvent (QPaintEvent * /* event */)
   double delta_y, delta_x = (b - a) / n;
 
   painter.setPen(QPen(Qt::black, 0));
-  ChebyshovLSM algo(f, a, b, 15, 100);
-//  algo.change_func(f_1);
-  algo.fit();
+
+/*  double *x;
+  x = new double[101];
+  double delta = (b - a) / 100;
+  for (int i = 0; i <= 100; i++)
+      x[i] = a + delta * i;
+
+  ChebyshovLSM algo1(f, x, a, b, 15, 99);
+  cubicSplines algo2(f, x, a, b, 100);
+*/
+  //  algo1.change_func(f_1);
+  ChebyshovLSM algo1(f, a, b, 15, 9);
+  cubicSplines algo2(f, a, b, 10);
+  algo1.method_init();
+  double *arr;
+  arr = new double[100];
+  memset(arr, 0, 100 * sizeof(double));
+  algo2.method_init(NULL, arr);
 
   // calculate min and max for current function
   max_y = min_y = 0;
   for (x1 = a; x1 - b < 1.e-6; x1 += delta_x)
     {
       y1 = f(x1);
-      y2 = algo.Pf(x1);
+      y2 = algo1.method_compute(x1);
       if (y1 < min_y)
         min_y = y1;
       if (y1 > max_y)
         max_y = y1;
-      qDebug() << y2;
       if (y2 < min_y)
         min_y = y2;
       if (y2 > max_y)
@@ -155,27 +170,43 @@ void Window::paintEvent (QPaintEvent * /* event */)
   for (x2 = x1 + delta_x; x2 - b < 1.e-6; x2 += delta_x)
     {
       y2 = f (x2);
-      painter.drawLine (QPointF (x1, y1), QPointF (x2, y2));
+      painter.drawLine (QPointF(x1, y1), QPointF(x2, y2));
 
       x1 = x2, y1 = y2;
     }
   x2 = b;
   y2 = f (x2);
-  painter.drawLine (QPointF (x1, y1), QPointF (x2, y2));
+  painter.drawLine (QPointF(x1, y1), QPointF(x2, y2));
 
   painter.setPen(QPen(Qt::green, 0));
 
   x1 = a;
-  y1 = algo.Pf(x1);
+  y1 = algo1.method_compute(x1);
   for (x2 = x1 + delta_x; x2 - b < 1.e-6; x2 += delta_x)
   {
-      y2 = algo.Pf(x2);
-      painter.drawLine (QPointF ((x1) , y1), QPointF (x2, y2));
+      y2 = algo1.method_compute(x2);
+      painter.drawLine(QPointF((x1), y1), QPointF(x2, y2));
       x1 = x2, y1 = y2;
   }
   x2 = b;
-  y2 = algo.Pf(x2);
+  y2 = algo1.method_compute(x2);
   painter.drawLine (QPointF (x1, y1), QPointF (x2, y2));  // draw axis
+
+  painter.setPen(QPen(Qt::blue, 0));
+
+  x1 = a;
+  y1 = algo1.method_compute(x1);
+  for (x2 = x1 + delta_x; x2 - b < 1.e-6; x2 += delta_x)
+  {
+      y2 = algo2.method_compute(x2);
+      qDebug() << "(" << x2 << ", " << y2 << ")";
+      painter.drawLine(QPointF((x1), y1), QPointF(x2, y2));
+      x1 = x2, y1 = y2;
+  }
+  x2 = b;
+  y2 = algo2.method_compute(x2);
+  painter.drawLine (QPointF (x1, y1), QPointF (x2, y2));  // draw axis
+
 
   // restore previously saved Coordinate System
   painter.restore ();

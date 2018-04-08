@@ -12,12 +12,12 @@ public:
     ChebyshovLSM(double (*f_)(double), double a_ = -1, double b_ = 1, int n_ = 5, int N_ = 10);
     ~ChebyshovLSM();
     double (*f) (double);
-    double Pf(double x);
-    void fit();
+    double method_compute(double x);
+    void method_init();
 //    void change_func(double (*f_)(double));
 
 private:
-    double *alpha;
+    double *state;
     double f_(double x);
     double U(int n, double x);
     double T(int n, double x);
