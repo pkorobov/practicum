@@ -1,4 +1,3 @@
-
 #ifndef WINDOW_H
 #define WINDOW_H
 
@@ -13,7 +12,10 @@ private:
   const char *f_name;
   double a;
   double b;
-  int n;
+  double *x, *values;
+
+  bool fromFile = true;
+  int n, steps;
 
 public:
   double(*f) (double);

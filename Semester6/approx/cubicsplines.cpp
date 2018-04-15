@@ -1,5 +1,8 @@
 #include "cubicsplines.h"
 #include <QTime>
+#include <QDebug>
+#include <iostream>
+
 
 cubicSplines::cubicSplines()
 {
@@ -13,67 +16,80 @@ cubicSplines::~cubicSplines()
 }
 
 
-cubicSplines::cubicSplines(double (*f_)(double), double a_, double b_, int n_)
+cubicSplines::cubicSplines(double a_, double b_, int n_, double *x_, double *values_)
+    : abstractMethod(a_, b_, n_, x_, values_)
 {
-    f = f_;
-    a = a_;
-    b = b_;
-    n = n_;
     state = new double[4 * n];
-    x = new double[n];
     memset(state, 0, 4 * n * sizeof(double));
 }
 
-double cubicSplines::method_init(double *values, double *derivatives)
+double cubicSplines::method_init(double *derivatives)
 {
     double *X;
     double *d;
 
     d = new double[n];
     X = new double[n * (n + 1)];
-    memset(X, 0, n * n * sizeof(double));
+    memset(X, 0, n * (n + 1) * sizeof(double));
 
-    double delta = (b - a) / (n - 1);
-    for (int i = 0; i <= n - 1; i++)
-        x[i] = a + delta * i;
+    X[0 * n + 0] = 1;
+    X[n * n + 0] = derivatives[0];
 
-    X[0 + 0 * n] = 1;
-    X[0 + n * n] = derivatives[0];
-
-    X[n - 1 + n * (n - 1)] = 1;
-    X[n + n * (n - 1)] = derivatives[n];
+    X[(n - 1) * n + (n - 1)] = 1;
+    X[n * n + (n - 1)] = derivatives[n];
     for (int i = 1; i < n - 1; i++)
     {
-        X[i + n * (i - 1)] = x[i + 1] - x[i];
-        X[i + n * i] = 2 * (x[i + 1] - x[i - 1]);
-        X[i + n * (i + 1)] = x[i] - x[i - 1];
-        X[i + n * n] = 3 * (f(x[i]) - f(x[i - 1])) / (x[i] - x[i - 1]) * (x[i + 1] - x[i]) +
-                       3 * (f(x[i + 1]) - f(x[i])) / (x[i + 1] - x[i]) * (x[i] - x[i - 1]);
+        X[i * n + (i - 1)] = x[i + 1] - x[i];
+        X[i * n + i] = 2 * (x[i + 1] - x[i - 1]);
+        X[i * n + (i + 1)] = x[i] - x[i - 1];
+        X[n * n + i] = 3 * (values[i] - values[i - 1]) / (x[i] - x[i - 1]) * (x[i + 1] - x[i]) +
+                       3 * (values[i + 1] - values[i]) / (x[i + 1] - x[i]) * (x[i] - x[i - 1]);
     }
-    for (int k = 0; k < n; k++)
-        for (int i = k + 1; k < n; k++)
+/*    for (int i = 0; i <= n; i++)
+    {
+        for (int j = 0; j < n; j++)
+            qDebug() << X[i * n + j] << " " << (X + n * n + j);
+        qDebug() << endl;
+    }
+*/    for (int k = 0; k < n; k++)
+        for (int i = k + 1; i < n; i++)
         {
-            double t = X[i + k * n] / X[k + k * n];
-            X[i + k * n] = 0;
-            for (int j = k + 1; j < n; j++)
-                X[i + j * n] -= t * X[k + j * n];
+            double t = X[i * n + k] / X[k * n + k];
+//            qDebug() << "[[[[]]]" << t;
+            for (int j = k + 1; j <= n; j++)
+                X[i * n + j] -= t * X[k * n + j];
+            X[i * n + k] = 0;
+
+            X[n * n + i] -= t * X[n * n + k];
         }
 
     for (int i = n - 1; i >= 0; i--)
     {
-        d[i] = X[i + n * n];
+        d[i] = X[n * n + i];
         for (int j = i + 1; j < n; j++)
-            d[i] -= d[j] * X[i + j * n];
-        d[i] /= X[i + i * n];
+            d[i] -= d[j] * X[i * n + j];
+        d[i] /= X[i * n + i];
     }
+
+/*    for (int i = 0; i < n; i++)
+        qDebug() << d[i];
+*/
     for (int i = 0; i < n - 1; i++)
     {
-        state[i + 0 * n] = f(x[i]);//values[i];
-        state[i + 1 * n] = derivatives[i];
-        state[i + 2 * n] = 3 * (f(x[i + 1]) - f(x[i])) / (x[i + 1] - x[i]) - 2 * d[i] - d[i + 1];
-        state[i + 3 * n] = (d[i] + d[i + 1] - 2 * (f(x[i + 1]) - f(x[i])) / (x[i + 1] - x[i])) / (x[i + 1] - x[i]) / (x[i + 1] - x[i]);
+        state[0 * n + i] = values[i]; //values[i];
+        state[1 * n + i] = d[i];
+        state[2 * n + i] = (3 * (values[i + 1] - values[i]) / (x[i + 1] - x[i]) - 2 * d[i] - d[i + 1]) / (x[i + 1] - x[i]);
+        state[3 * n + i] = (d[i] + d[i + 1] - 2 * (values[i + 1] - values[i]) / (x[i + 1] - x[i])) / (x[i + 1] - x[i]) / (x[i + 1] - x[i]);
     }
+/*    for (int j = 0; j < 4; j++)
+    {
+        for (int i = 0; i < n; i++)
+            qDebug() << state[j * n + i];
+        qDebug() << "!!!";
+    }
+*/
 }
+
 
 double cubicSplines::method_compute(double y)
 {
@@ -81,7 +97,7 @@ double cubicSplines::method_compute(double y)
     for (int i = 0; i < n - 1; i++)
     {
         if (x[i] <= y && y <= x[i + 1])
-            return state[i] + state[i + n] * (y - x[i]) +
-            state[i + 2 * n] * (y - x[i]) * (y - x[i]) + state[i + 3 * n] * (y - x[i]) * (y - x[i]) * (y - x[i]);
+            return state[0 * n + i] + state[1 * n + i] * (y - x[i]) +
+            state[2 * n + i] * (y - x[i]) * (y - x[i]) + state[3 * n + i] * (y - x[i]) * (y - x[i]) * (y - x[i]);
     }
 }

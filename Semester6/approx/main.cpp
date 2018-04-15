@@ -11,7 +11,6 @@
 int main (int argc, char *argv[])
 {
     QApplication app (argc, argv);
-
     QMainWindow *window = new QMainWindow;
     QMenuBar *tool_bar = new QMenuBar (window);
     Window *graph_area = new Window (window);
@@ -19,7 +18,7 @@ int main (int argc, char *argv[])
 
     if (graph_area->parse_command_line(argc, argv))
     {
-          QMessageBox::warning (0, "Wrong input arguments!",
+          QMessageBox::warning(0, "Wrong input arguments!",
                             "Wrong input arguments!");
           return -1;
     }

@@ -1,20 +1,18 @@
 #ifndef CHEBYSHOVLSM_H
 #define CHEBYSHOVLSM_H
 #include <QtMath>
+#include "abstractmethod.h"
 
-class ChebyshovLSM
+class ChebyshovLSM : public abstractMethod
 {
 public:
-    double a, b;
-    double *x;
-    int n, N;
+    int N;
     ChebyshovLSM();
-    ChebyshovLSM(double (*f_)(double), double a_ = -1, double b_ = 1, int n_ = 5, int N_ = 10);
+    ChebyshovLSM(double a_, double b_, int n_, double *x_, double *values_, int N_);
     ~ChebyshovLSM();
     double (*f) (double);
     double method_compute(double x);
     void method_init();
-//    void change_func(double (*f_)(double));
 
 private:
     double *alpha;
