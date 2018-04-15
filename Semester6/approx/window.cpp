@@ -4,6 +4,9 @@
 #include <QtMath>
 #include <QFile>
 #include <QTextStream>
+#include <QSpinBox>
+#include <QPushButton>
+#include <QMainWindow>
 
 #include <stdio.h>
 #include <iostream>
@@ -32,6 +35,26 @@ Window::Window(QWidget *parent)
   change_func();
 
   steps = width();
+
+  QPushButton *double_button = new QPushButton(this);
+  double_button->move(120, 5);
+  double_button->setText("Points x 2");
+
+  QPushButton *halve_button = new QPushButton(this);
+  halve_button->move(215, 5);
+  halve_button->setText("Points / 2");
+
+  QSpinBox *delta_box = new QSpinBox(this);
+  delta_box->move(310, 5);
+
+  //  delta->setText("Delta +/-");
+
+  connect(double_button, SIGNAL(clicked()), this, SLOT(doublePoints()));
+  connect(halve_button, SIGNAL(clicked()), this, SLOT(halvePoints()));
+  connect(delta_box, SIGNAL(valueChanged(int)), this, SLOT(addDelta(int)));
+
+  delta_box->setMinimum(-1);
+  delta_box->setMaximum(n - 1);
 }
 
 QSize Window::minimumSizeHint() const
@@ -41,7 +64,32 @@ QSize Window::minimumSizeHint() const
 
 QSize Window::sizeHint() const
 {
-  return QSize(1000, 1000);
+  return QSize(800, 800);
+}
+
+void Window::addDelta(int i)
+{
+    deltaPoint = i;
+    update();
+}
+
+void Window::doublePoints()
+{
+    if (fromFile)
+        return;
+
+    n *= 2;
+    update();
+}
+
+void Window::halvePoints()
+{
+    if (fromFile)
+        return;
+
+    if (n > 1)
+        n /= 2;
+    update();
 }
 
 int Window::parse_command_line(int argc, char *argv[])
@@ -118,6 +166,9 @@ void Window::paintEvent(QPaintEvent * /* event */)
   x = new double[n];
   values = new double[n];
   initValues(fromFile);
+
+  if (deltaPoint > -1)
+      values[deltaPoint] += 1;
 
   ChebyshovLSM algo1(a, b, n, x, values, 12);
   cubicSplines algo2(a, b, n, x, values);

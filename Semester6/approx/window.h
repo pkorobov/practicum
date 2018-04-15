@@ -14,6 +14,7 @@ private:
   double b;
   double *x, *values;
   double der[2];
+  int deltaPoint = -1;
   QString filename;
 
   bool fromFile = false;
@@ -32,7 +33,9 @@ public:
 
 public slots:
   void change_func();
-
+  void doublePoints();
+  void halvePoints();
+  void addDelta(int i);
 protected:
   void paintEvent (QPaintEvent *event);
 };

@@ -10,10 +10,10 @@
 
 int main (int argc, char *argv[])
 {
-    QApplication app (argc, argv);
+    QApplication app(argc, argv);
     QMainWindow *window = new QMainWindow;
-    QMenuBar *tool_bar = new QMenuBar (window);
-    Window *graph_area = new Window (window);
+    QMenuBar *tool_bar = new QMenuBar(window);
+    Window *graph_area = new Window(window);
     QAction *action;
 
     if (graph_area->parse_command_line(argc, argv))
