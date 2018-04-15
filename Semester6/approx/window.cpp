@@ -2,6 +2,8 @@
 #include <QPen>
 #include <QDebug>
 #include <QtMath>
+#include <QFile>
+#include <QTextStream>
 
 #include <stdio.h>
 #include <iostream>
@@ -9,6 +11,8 @@
 #include "window.h"
 #include "chebyshovlsm.h"
 #include "cubicsplines.h"
+#include "functions.h"
+
 
 #define DEFAULT_A -10
 #define DEFAULT_B 10
@@ -17,58 +21,25 @@
 
 using namespace std;
 
-double f_0 (double x)
-{
-  return x;
-}
-
-double f_1 (double x)
-{
-  return x * x * x;
-}
-
-double f_2 (double x)
-{
-  return qSin(x) / qSqrt(1 + x * x);
-}
-
-double f_3 (double x)
-{
-  return qExp(-x*x);
-}
-
-double f_4 (double x)
-{
-  return qAbs(x);
-}
-
-Window::Window (QWidget *parent)
-  : QWidget (parent)
+Window::Window(QWidget *parent)
+  : QWidget(parent)
 {
   a = DEFAULT_A;
   b = DEFAULT_B;
   n = DEFAULT_N;
 
-//  steps = DEFAULT_STEPS;
-  x = new double[1000];
-
-  double delta_x = (b - a) / (n - 1);
-  for (int i = 0; i < n; i++)
-      x[i] = a + i * delta_x;
+  func_id = 0;
+  change_func();
 
   steps = width();
-
-  func_id = 0;
-
-  change_func();
 }
 
-QSize Window::minimumSizeHint () const
+QSize Window::minimumSizeHint() const
 {
   return QSize(100, 100);
 }
 
-QSize Window::sizeHint () const
+QSize Window::sizeHint() const
 {
   return QSize(1000, 1000);
 }
@@ -82,15 +53,9 @@ int Window::parse_command_line(int argc, char *argv[])
   {
 //    QString file = argv[2];
     fromFile = true;
-    ifstream myfile;
-    myfile.open(argv[2]);
-    myfile >> n;
-    for (int i = 0; i < n; i++)
-    {
-        myfile >> x[i];
-        myfile >> values[i];
-    }
-    myfile.close();
+    change_func();
+    filename = argv[1];
+    return 0;
   }
   char c;
   if (sscanf(argv[1], "%lf", &a) != 1
@@ -99,20 +64,18 @@ int Window::parse_command_line(int argc, char *argv[])
     || argc > 3 && sscanf(argv[3], "%d", &n) != 1
     || n <= 0)
     return -2;
-  else
-  {
-      double delta_x = (b - a) / (n - 1);
-      for (int i = 0; i < n; i++)
-         x[i] = a + i * delta_x;
-  }
-  qDebug() << a;
-  qDebug() << b;
   return 0;
 }
 
 /// change current function for drawing
 void Window::change_func()
 {
+  if (fromFile)
+  {
+       f_name = "Data from file";
+       update();
+       return;
+  }
   func_id = (func_id + 1) % 5;
 
   switch (func_id)
@@ -120,23 +83,27 @@ void Window::change_func()
       case 0:
         f_name = "f (x) = x";
         f = f_0;
-
+        df = df_0;
         break;
       case 1:
         f_name = "f (x) = x * x * x";
         f = f_1;
+        df = df_1;
         break;
       case 2:
         f_name = "f (x) = Sin(x) / Sqrt(1 + x*x)";
         f = f_2;
+        df = df_2;
         break;
       case 3:
         f_name = "f (x) = Exp(-x*x)";
         f = f_3;
+        df = df_3;
         break;
       case 4:
         f_name = "f (x) = |x|";
         f = f_4;
+        df = df_4;
         break;
     }
     update ();
@@ -148,27 +115,20 @@ void Window::paintEvent(QPaintEvent * /* event */)
   QPainter painter (this);
   double x1, x2, y1, y2;
   double max_y, min_y;
-  double *values;
-
+  x = new double[n];
   values = new double[n];
+  initValues(fromFile);
 
-  for (int i = 0; i < n; i++)
-       values[i] = f(x[i]);
-
-  ChebyshovLSM algo1(a, b, n, x, values, 5);
+  ChebyshovLSM algo1(a, b, n, x, values, 12);
   cubicSplines algo2(a, b, n, x, values);
-  double arr[n + 1];
-  for (int i = 0; i <= n; i++)
-      arr[i] = 1;
-  arr[0] = -1;
-  arr[1] = -1;
 
   algo1.method_init();
-  algo2.method_init(arr);
+  algo2.method_init(der);
 
   max_y = min_y = 0;
   double delta_x = (b - a) / steps;
   double delta_y;
+
 
   if (fromFile)
       for (int i = 0; i < n; i++)
@@ -180,7 +140,7 @@ void Window::paintEvent(QPaintEvent * /* event */)
             max_y = y1;
       }
   else
-      for (x1 = a; x1 - b < 1.e-6; x1 += delta_x)
+      for (x1 = a; x1 < b - 1.e-6; x1 += delta_x)
       {
           y1 = f(x1);
           if (y1 < min_y)
@@ -188,7 +148,7 @@ void Window::paintEvent(QPaintEvent * /* event */)
           if (y1 > max_y)
             max_y = y1;
       }
-  for (x1 = a; x1 - b < 1.e-6; x1 += delta_x)
+  for (x1 = a; x1 < b - 1.e-6; x1 += delta_x)
     {
       y2 = algo1.method_compute(x1);
       double y3 = algo2.method_compute(x1);
@@ -225,7 +185,6 @@ void Window::paintEvent(QPaintEvent * /* event */)
   painter.drawLine(0, min_y - 1, 0, max_y + 1);
 
   painter.setPen(QPen(Qt::red, 0));
-  qDebug() << min_y << max_y;
   // draw approximated line for graph
   if (fromFile)
   {
@@ -236,8 +195,7 @@ void Window::paintEvent(QPaintEvent * /* event */)
           x2 = x[i];
           y2 = values[i];
           painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
-          x1 = x2;
-          y1 = y2;
+          x1 = x2, y1 = y2;
       }
       x2 = x[n - 1];
       y2 = values[n - 1];
@@ -265,13 +223,14 @@ void Window::paintEvent(QPaintEvent * /* event */)
 
   x1 = a;
   y1 = algo1.method_compute(x1);
-  for (x2 = x1 + delta_x; x2 - b < 1.e-6; x2 += delta_x)
+  for (x2 = x1 + delta_x; x2 < b - 1.e-6; x2 += delta_x)
   {
       y2 = algo1.method_compute(x2);
       painter.drawLine (QPointF ((x1) , y1), QPointF (x2, y2));
       x1 = x2, y1 = y2;
   }
   x2 = b;
+
   y2 = algo1.method_compute(x2);
   painter.drawLine (QPointF (x1, y1), QPointF (x2, y2));  // draw axis
 
@@ -279,18 +238,18 @@ void Window::paintEvent(QPaintEvent * /* event */)
 
   x1 = a;
   y1 = algo2.method_compute(x1);
-  for (x2 = x1 + delta_x; x2 - b < 1.e-6; x2 += delta_x)
+
+  delta_x = 0.01;
+  for (x2 = x1 + delta_x; x2 < b - 1.e-6; x2 += delta_x)
   {
       y2 = algo2.method_compute(x2);
-   //  qDebug() << x2 << ", " << y2;
-      painter.drawLine(QPointF ((x1) , y1), QPointF (x2, y2));
+      painter.drawLine(QPointF((x1) , y1), QPointF(x2, y2));
       x1 = x2, y1 = y2;
   }
   x2 = b;
   y2 = algo2.method_compute(x2);
 
-
-  painter.drawLine(QPointF (x1, y1), QPointF (x2, y2));
+  painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
 
   // restore previously saved Coordinate System
   painter.restore();
@@ -300,4 +259,40 @@ void Window::paintEvent(QPaintEvent * /* event */)
   painter.setPen("blue");
   painter.drawText(0, 20, f_name);
 //  delete[] values;
+}
+
+int Window::initValues(bool fromFile)
+{
+    if (!fromFile)
+    {
+        double delta_x = (b - a) / (n - 1);
+        for (int i = 0; i < n; i++)
+        {
+            x[i] = a + i * delta_x;
+            values[i] = f(x[i]);
+        }
+        der[0] = df(x[0]);
+        der[1] = df(x[n - 1]);
+    }
+    else
+    {
+        QFile fileIn(filename);
+        if(fileIn.open(QIODevice::ReadOnly))
+        {
+            QTextStream fin(&fileIn);
+            fin >> n;
+            for (int i = 0; i < n; i++)
+            {
+                fin >> x[i];
+                fin >> values[i];
+            }
+            fin  >> der[0];
+            fin >> der[1];
+
+            a = x[0];
+            b = x[n - 1];
+            fileIn.close();
+            ifstream myfile;
+        }
+    }
 }

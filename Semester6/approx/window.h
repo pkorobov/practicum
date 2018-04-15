@@ -13,12 +13,16 @@ private:
   double a;
   double b;
   double *x, *values;
+  double der[2];
+  QString filename;
 
-  bool fromFile = true;
+  bool fromFile = false;
   int n, steps;
 
 public:
   double(*f) (double);
+  double(*df) (double);
+  int initValues(bool fromFile);
   Window(QWidget *parent);
 
   QSize minimumSizeHint() const;

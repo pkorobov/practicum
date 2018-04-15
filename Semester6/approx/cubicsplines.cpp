@@ -36,7 +36,7 @@ double cubicSplines::method_init(double *derivatives)
     X[n * n + 0] = derivatives[0];
 
     X[(n - 1) * n + (n - 1)] = 1;
-    X[n * n + (n - 1)] = derivatives[n];
+    X[n * n + (n - 1)] = derivatives[1];
     for (int i = 1; i < n - 1; i++)
     {
         X[i * n + (i - 1)] = x[i + 1] - x[i];
@@ -93,11 +93,11 @@ double cubicSplines::method_init(double *derivatives)
 
 double cubicSplines::method_compute(double y)
 {
-
     for (int i = 0; i < n - 1; i++)
     {
         if (x[i] <= y && y <= x[i + 1])
             return state[0 * n + i] + state[1 * n + i] * (y - x[i]) +
             state[2 * n + i] * (y - x[i]) * (y - x[i]) + state[3 * n + i] * (y - x[i]) * (y - x[i]) * (y - x[i]);
     }
+    return 0;
 }

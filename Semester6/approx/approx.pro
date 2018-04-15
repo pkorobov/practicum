@@ -29,14 +29,14 @@ SOURCES += \
     chebyshovlsm.cpp \
     cubicsplines.cpp \
     abstractmethod.cpp \
-    valueinit.cpp
+    functions.cpp
 
 HEADERS += \
         window.h \
     chebyshovlsm.h \
     abstractmethod.h \
     cubicsplines.h \
-    valueinit.h
+    functions.h
 
 FORMS += \
         window.ui
