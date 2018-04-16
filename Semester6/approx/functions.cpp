@@ -1,6 +1,6 @@
 #include "functions.h"
 #include "window.h"
-#include <QtMath>
+#include <cmath>
 #include <QCoreApplication>
 #include <QDebug>
 
@@ -11,7 +11,8 @@ double f_0 (double x)
 
 double df_0 (double x)
 {
-  return 1;
+
+  return x * 0 + 1;
 }
 
 double f_1 (double x)
@@ -26,22 +27,22 @@ double df_1 (double x)
 
 double f_2 (double x)
 {
-  return qSin(x) / qSqrt(1 + x * x);
+  return sin(x) / sqrt(1 + x * x);
 }
 
 double df_2 (double x)
 {
-  return ((1 + x * x) *qCos(x) - x * qSin(x)) / qPow(1 + x * x, 1.5);
+  return ((1 + x * x) * cos(x) - x * sin(x)) / pow(1 + x * x, 1.5);
 }
 
 double f_3 (double x)
 {
-  return qExp(-x*x);
+  return exp(-x*x);
 }
 
 double df_3 (double x)
 {
-  return -2 * x * qExp(-x*x);
+  return -2 * x * exp(-x*x);
 }
 
 double f_4 (double x)
