@@ -30,7 +30,8 @@ public:
   QSize sizeHint() const;
 
   int parse_command_line(int argc, char *argv[]);
-
+signals:
+  void nChanged(int n);
 public slots:
   void change_func();
   void doublePoints();

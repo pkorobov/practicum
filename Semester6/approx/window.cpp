@@ -44,13 +44,11 @@ Window::Window(QWidget *parent)
   halve_button->move(215, 5);
   halve_button->setText("Points / 2");
 
-  QSpinBox *delta_box = new QSpinBox(this);
-  delta_box->move(310, 5);
-
-  //  delta->setText("Delta +/-");
-
   connect(double_button, SIGNAL(clicked()), this, SLOT(doublePoints()));
   connect(halve_button, SIGNAL(clicked()), this, SLOT(halvePoints()));
+
+  QSpinBox *delta_box = new QSpinBox(this);
+  delta_box->move(310, 5);
   connect(delta_box, SIGNAL(valueChanged(int)), this, SLOT(addDelta(int)));
 
   delta_box->setMinimum(-1);
@@ -79,6 +77,7 @@ void Window::doublePoints()
         return;
 
     n *= 2;
+    emit nChanged(n - 1);
     update();
 }
 
@@ -89,6 +88,7 @@ void Window::halvePoints()
 
     if (n > 1)
         n /= 2;
+    emit nChanged(n - 1);
     update();
 }
 
