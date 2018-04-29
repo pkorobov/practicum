@@ -14,11 +14,11 @@ private:
   double b;
   double *x, *values;
   double der[2];
-  int deltaPoint = -1;
+  int deltaPoint;
   QString filename;
 
-  bool fromFile = false;
-  int n, steps;
+  bool fromFile;
+  int n, N, steps;
 
 public:
   double(*f) (double);
@@ -31,12 +31,15 @@ public:
 
   int parse_command_line(int argc, char *argv[]);
 signals:
-  void nChanged(int n);
+  void nChanged(QString);
+  void error(QString);
+
 public slots:
   void change_func();
   void doublePoints();
   void halvePoints();
-  void addDelta(int i);
+  void addDelta(int);
+
 protected:
   void paintEvent (QPaintEvent *event);
 };

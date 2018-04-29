@@ -1,11 +1,12 @@
 #include <QPainter>
 #include <QPen>
 #include <QDebug>
-#include <QtMath>
+#include <cmath>
 #include <QFile>
 #include <QTextStream>
 #include <QSpinBox>
 #include <QPushButton>
+#include <QLabel>
 #include <QMainWindow>
 
 #include <stdio.h>
@@ -17,8 +18,9 @@
 #include "functions.h"
 
 
-#define DEFAULT_A -10
-#define DEFAULT_B 10
+#define DEFAULT_A -3.14
+#define DEFAULT_B 3.14
+#define DEFAULT_n 20
 #define DEFAULT_N 10
 #define DEFAULT_STEPS 100
 
@@ -29,7 +31,10 @@ Window::Window(QWidget *parent)
 {
   a = DEFAULT_A;
   b = DEFAULT_B;
-  n = DEFAULT_N;
+  n = DEFAULT_n;
+  N = DEFAULT_N;
+  deltaPoint = -1;
+  fromFile = false;
 
   func_id = 0;
   change_func();
@@ -44,6 +49,12 @@ Window::Window(QWidget *parent)
   halve_button->move(215, 5);
   halve_button->setText("Points / 2");
 
+  QLabel *label = new QLabel(this);
+  label->move(30, 20);
+  QString str;
+  label->setText("n = " + str.setNum(n));
+  connect(this, SIGNAL(nChanged(QString)), label, SLOT(setText(QString)));
+
   connect(double_button, SIGNAL(clicked()), this, SLOT(doublePoints()));
   connect(halve_button, SIGNAL(clicked()), this, SLOT(halvePoints()));
 
@@ -51,8 +62,14 @@ Window::Window(QWidget *parent)
   delta_box->move(310, 5);
   connect(delta_box, SIGNAL(valueChanged(int)), this, SLOT(addDelta(int)));
 
+  QLabel *labelErr = new QLabel(this);
+  labelErr->move(30, 40);
+  labelErr->setFixedWidth(200);
+  labelErr->setText("Err = ...");
+  connect(this, SIGNAL(error(QString)), labelErr, SLOT(setText(QString)));
+
   delta_box->setMinimum(-1);
-  delta_box->setMaximum(n - 1);
+//  delta_box->setMaximum(n - 1);
 }
 
 QSize Window::minimumSizeHint() const
@@ -67,8 +84,11 @@ QSize Window::sizeHint() const
 
 void Window::addDelta(int i)
 {
-    deltaPoint = i;
-    update();
+    if (i < n)
+    {
+        deltaPoint = i;
+        update();
+    }
 }
 
 void Window::doublePoints()
@@ -77,7 +97,9 @@ void Window::doublePoints()
         return;
 
     n *= 2;
-    emit nChanged(n - 1);
+    QString str;
+    emit nChanged("n = " + str.setNum(n));
+    qDebug() << "n = " + str.setNum(n);
     update();
 }
 
@@ -86,9 +108,10 @@ void Window::halvePoints()
     if (fromFile)
         return;
 
-    if (n > 1)
+    if (n > 2)
         n /= 2;
-    emit nChanged(n - 1);
+    QString str;
+    emit nChanged("n = " + str.setNum(n));
     update();
 }
 
@@ -105,12 +128,13 @@ int Window::parse_command_line(int argc, char *argv[])
     filename = argv[1];
     return 0;
   }
-  char c;
   if (sscanf(argv[1], "%lf", &a) != 1
     || sscanf(argv[2], "%lf", &b) != 1
     || b - a < 1.e-6
-    || argc > 3 && sscanf(argv[3], "%d", &n) != 1
-    || n <= 0)
+    || (argc > 3 && sscanf(argv[3], "%d", &n) != 1)
+    || n <= 0
+    || (argc > 4 && sscanf(argv[4], "%d", &N) != 1)
+    || N <= 0)
     return -2;
   return 0;
 }
@@ -170,7 +194,7 @@ void Window::paintEvent(QPaintEvent * /* event */)
   if (deltaPoint > -1)
       values[deltaPoint] += 1;
 
-  ChebyshovLSM algo1(a, b, n, x, values, 12);
+  ChebyshovLSM algo1(a, b, n, x, values, N);
   cubicSplines algo2(a, b, n, x, values);
 
   algo1.method_init();
@@ -179,6 +203,22 @@ void Window::paintEvent(QPaintEvent * /* event */)
   max_y = min_y = 0;
   double delta_x = (b - a) / steps;
   double delta_y;
+
+  double error1 = 0, error2 = 0;
+
+  if (!fromFile)
+      for (x1 = a; x1 < b - 1.e-6; x1 += delta_x)
+      {
+          y1 = f(x1);
+          y2 = algo1.method_compute(x1);
+          double y3 = algo2.method_compute(x1);
+          if (error1 < abs(y1 - y2))
+              error1 = abs(y1 - y2);
+          if (error2 < abs(y1 - y3))
+              error2 = abs(y1 - y3);
+        }
+  QString str;
+  emit error("Err: " + QString::number(error1) + ", " + QString::number(error2));
 
 
   if (fromFile)
@@ -199,6 +239,7 @@ void Window::paintEvent(QPaintEvent * /* event */)
           if (y1 > max_y)
             max_y = y1;
       }
+
   for (x1 = a; x1 < b - 1.e-6; x1 += delta_x)
     {
       y2 = algo1.method_compute(x1);
@@ -331,7 +372,7 @@ int Window::initValues(bool fromFile)
         if(fileIn.open(QIODevice::ReadOnly))
         {
             QTextStream fin(&fileIn);
-            fin >> n;
+            fin >> n >> N;
             for (int i = 0; i < n; i++)
             {
                 fin >> x[i];
@@ -346,4 +387,5 @@ int Window::initValues(bool fromFile)
             ifstream myfile;
         }
     }
+    return 0;
 }

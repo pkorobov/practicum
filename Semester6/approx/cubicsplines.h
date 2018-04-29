@@ -9,7 +9,7 @@ public:
     cubicSplines(double a_, double b_, int n_, double *x_, double *values_);
     ~cubicSplines();
 
-    double method_init(double *derivatives);
+    void method_init(double *derivatives);
     double method_compute(double x);
 private:
     double *state;

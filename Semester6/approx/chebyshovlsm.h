@@ -1,6 +1,6 @@
 #ifndef CHEBYSHOVLSM_H
 #define CHEBYSHOVLSM_H
-#include <QtMath>
+#include <cmath>
 #include "abstractmethod.h"
 
 class ChebyshovLSM : public abstractMethod

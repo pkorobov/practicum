@@ -23,7 +23,7 @@ cubicSplines::cubicSplines(double a_, double b_, int n_, double *x_, double *val
     memset(state, 0, 4 * n * sizeof(double));
 }
 
-double cubicSplines::method_init(double *derivatives)
+void cubicSplines::method_init(double *derivatives)
 {
     double *X;
     double *d;

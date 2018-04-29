@@ -1,5 +1,5 @@
 #include "chebyshovlsm.h"
-#include <QtMath>
+#include <cmath>
 #include <QDebug>
 #include <QTime>
 #include "window.h"
@@ -11,7 +11,7 @@ double f_default(double x)
 {
 //    return qSin(x);
 //    return qSin(x) / qSqrt(1 + x * x);
-      return qCos(x);
+      return cos(x);
 }
 
 ChebyshovLSM::ChebyshovLSM()
@@ -72,20 +72,23 @@ double ChebyshovLSM::T(int i, double x)
 double ChebyshovLSM::IntA(int i, double x)
 {
     if (i == 0)
-        return -qAcos(x);
+    {
+//        qDebug() << x;
+        return -acos(x);
+    }
     else
-        return -1.0 / i * qSqrt(1 - x * x) * U(i - 1, x);
+        return -1.0 / i * sqrt(1 - x * x) * U(i - 1, x);
 }
 
 //Интеграл T_i(x) * x / (sqrt(1 - x^2)
 double ChebyshovLSM::IntB(int i, double x)
 {
     if (i == 0)
-        return -qSqrt(1 - x * x) * U(0, x);
+        return -sqrt(1 - x * x) * U(0, x);
     else if (i == 1)
-        return -0.5 * (qAcos(x) + 0.5 * qSqrt(1 - x * x) * U(1, x));
+        return -0.5 * (acos(x) + 0.5 * sqrt(1 - x * x) * U(1, x));
     else
-        return -0.5 * qSqrt(1 - x * x) * (1.0 / (i - 1) * U(i - 2, x) + 1.0 / (i + 1) * U(i, x));
+        return -0.5 * sqrt(1 - x * x) * (1.0 / (i - 1) * U(i - 2, x) + 1.0 / (i + 1) * U(i, x));
 }
 
 void ChebyshovLSM::method_init()
@@ -100,6 +103,8 @@ void ChebyshovLSM::method_init()
 
     for (int i = 0; i < n; i++)
         x[i] = (2 * ChebyshovLSM::x[i] - (b + a)) / (b - a);
+    x[0] = -1;
+    x[n - 1] = 1;
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < n; j++)

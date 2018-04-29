@@ -14,3 +14,7 @@ abstractMethod::abstractMethod(double a_, double b_, int n_, double *x_, double 
     values = values_;
 }
 
+abstractMethod::~abstractMethod()
+{
+
+}
