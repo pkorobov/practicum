@@ -1,34 +1,41 @@
-// ======================================================================
-//  main.cpp
-// ======================================================================
-//                   This file is a part of the book 
-//             "Qt 5.3 Professional programming with C++"
-// ======================================================================
-//  Copyright (c) 2014 by Max Schlee
-//
-//  Email : Max.Schlee@neonway.com
-//  Blog  : http://www.maxschlee.com
-//
-//  Social Networks
-//  ---------------
-//  FaceBook : http://www.facebook.com/mschlee
-//  Twitter  : http://twitter.com/Max_Schlee
-//  2Look.me : http://2look.me/NW100003
-//  Xing     : http://www.xing.com/profile/Max_Schlee
-//  vk.com   : https://vk.com/max.schlee
-// ======================================================================
 
 #include <QApplication>
+#include <QMainWindow>
+#include <QVBoxLayout>
+#include <QAction>
+#include <QMenuBar>
+#include <QMessageBox>
+
 #include "window.h"
 
-// ----------------------------------------------------------------------
-int main(int argc, char** argv)
+int main (int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    Window window;
+    QMainWindow *window = new QMainWindow;
+    QMenuBar *tool_bar = new QMenuBar(window);
+    Window *graph_area = new Window(window);
+    QAction *action;
 
-    window.resize(200, 200);
-    window.show();
+    if (graph_area->parse_command_line(argc, argv))
+    {
+          QMessageBox::warning(0, "Wrong input arguments!", "Wrong input arguments!");
+          return -1;
+    }
+    window->resize(400, 400);
+//    graph_area->resize(400, 400);
 
+    action = tool_bar->addAction("Change function", graph_area, SLOT(change_func()));
+    action->setShortcut(QString("Ctrl+C"));
+
+    action = tool_bar->addAction("Exit", window, SLOT(close()));
+    action->setShortcut(QString("Ctrl+X"));
+
+    tool_bar->setMaximumHeight(30);
+
+    window->setMenuBar(tool_bar);
+    window->setCentralWidget(graph_area);
+    window->setWindowTitle("Graph");
+
+    window->show();
     return app.exec();
 }
