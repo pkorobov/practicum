@@ -179,23 +179,23 @@ void ChebyshovLSM::method_init2v(double *x, double *y, double *values, int n, in
 {
     int L = max(max(m, n), N);
     gamma = new double[L * L];
-    double a = x[0], b = x[n - 1];
-    double c = y[0], d = y[m - 1];
+//    double a = x[0], b = x[n - 1];
+//    double c = y[0], d = y[m - 1];
     for (int i = 0; i < n; i++)
     {
         double column[m], res[N];
         for (int k = 0; k < m; k++)
             column[k] = values[i + k * L];
-        calc_coefficients(a, b, x, column, m, N, res);
+        calc_coefficients(c, d, y, column, m, N, res);
         for (int k = 0; k < N; k++)
             gamma[i + k * L] = res[k];
     }
     for (int j = 0; j < N; j++)
     {
-        double string[n];
+        double string[n], res[N];
         for (int k = 0; k < n; k++)
             string[k] = gamma[k + j * L];
-        calc_coefficients(c, d, y, string, n, N, gamma + j * L);
+        calc_coefficients(a, b, x, string, n, N, gamma + j * L);
     }
 }
 
@@ -213,6 +213,8 @@ double ChebyshovLSM::method_compute2v(double x, double y)
     double value = 0;
     for (int i = 0; i < N; i++)
         for (int j = 0; j < N; j++)
+        {
             value += gamma[i + j * L] * T(i, x) * T(j, y);
+        }
     return value;
 }

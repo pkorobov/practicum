@@ -3,24 +3,35 @@
 #include <QDebug>
 #include <cmath>
 #include <algorithm>
-#include "chebyshovlsm.h"
-#include "functions.h"
+#include <QPushButton>
+#include <QLabel>
+#include <QFont>
 
 using namespace std;
 
-double f(double x, double y)
+Window::Window(QWidget* pwgt) : QGLWidget(pwgt), m_xRotate(-90), m_zRotate(0)
 {
-    return  sin(x * y) / sqrt(1 + x * x * y * y);
+    a = -1, b = 1, c = -1, d = 1;
+    n = 10, m = 5, N = 5;
+    func_id = 2;
+    win_number = 0;
+    win_name = "Original function";
+    plot_original = false;
+    fromFile = false;
+    scale = 3.0f;
+
+    int s = 200;
+    x = new double[s];
+    y = new double[s];
+    values = new double[s * s];
+
+    derx = new double[2 * s];
+    dery = new double[2 * s];
+
+    valuesAlgo1 = new double[s * s];
+    valuesAlgo2 = new double[s * s];
 }
 
-Window::  Window(QWidget* pwgt/*= 0*/) : QGLWidget(pwgt), m_xRotate(-90), m_zRotate(0)
-{
-//    a = c = -1;
-  //  b = d = 1;
-    a = -1, b = 1, c = -1, d = 1;
-    n = 10, m = 10, N = 5;
-    func_id = 0;
-}
 
 int Window::parse_command_line(int argc, char *argv[])
 {
@@ -48,55 +59,15 @@ int Window::parse_command_line(int argc, char *argv[])
   return 0;
 }
 
-/*virtual*/void   Window::initializeGL()
+void Window::initializeGL()
 {
     qglClearColor(Qt::gray);
     glEnable(GL_DEPTH_TEST);
     glShadeModel(GL_FLAT);
-    int size1 = n;
-    int size2 = m;
-    x = new double[size1];
-    y = new double[size2];
-    values = new double[size1 * size2];
-
-    double delta_x = (b - a) / (n - 1);
-    double delta_y = (d - c) / (m - 1);
-
-    ChebyshovLSM algo(a, b, n, NULL, NULL, N);
-
     change_func();
-
-    for (int i = 0; i < n; i++)
-        x[i] = a + i * delta_x;
-    for (int j = 0; j < m; j++)
-        y[j] = c + j * delta_y;
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < m; j++)
-        {
-            values[i + j * n] = f(x[i], y[j]);
-        }
-
-    algo.method_init2v(x, y, values, n, m, N);
-
-
-    delta_x = (b - a) / (size1 - 1);
-    delta_y = (d - c) / (size2 - 1);
-
-    for (int i = 0; i < size1; i++)
-        x[i] = a + i * delta_x;
-    for (int j = 0; j < size2; j++)
-        y[j] = c + j * delta_y;
-    for (int i = 0; i < size1; i++)
-        for (int j = 0; j < size2; j++)
-        {
-            values[i + j * size1] = algo.method_compute2v(x[i], y[j]);
-        }
-    algo.method_init2v(x, y, values, n, m, 10);
-    graph = drawGraph(f);
-    graph2 = drawGraph(x, y, values, size1, size2);
 }
 
-/*virtual*/void   Window::resizeGL(int nWidth, int nHeight)
+void Window::resizeGL(int nWidth, int nHeight)
 {
     glViewport(0, 0, (GLint)nWidth, (GLint)nHeight);
     glMatrixMode(GL_PROJECTION);
@@ -104,7 +75,7 @@ int Window::parse_command_line(int argc, char *argv[])
     glFrustum(min(a, c), max(b, d), min(a, c), max(b, d), 1.0, 10.0);
 }
 
-/*virtual*/void   Window::paintGL()
+void Window::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -112,26 +83,32 @@ int Window::parse_command_line(int argc, char *argv[])
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glTranslatef(0.0, 0.0, -3.0);
+    glTranslatef(0.0, 0.0, -scale);
 
     glRotatef(m_xRotate, 1.0, 0.0, 0.0);
     glRotatef(m_zRotate, 0.0, 0.0, 1.0);
+    for (int i = 0; i < 3; i++)
+        if (win_number == i)
+            glCallList(graph[i]);
+    if (win_number > 0 && plot_original)
+        glCallList(graph[0]);
 
-    calculate();
+    QFont font("Decorative", 8, QFont::Normal);
 
-    graph = drawGraph(f);
-    graph2 = drawGraph(x, y, values, n, m);
+    QString str1, str2;
+    qglColor(Qt::black);
 
-    glCallList(graph);
-    glCallList(graph2);
+    renderText(0, 20, f_name, font);
+    renderText(0, 40, "Grid size: " + str1.setNum(n) + "x" + str2.setNum(m), font);
+    renderText(0, 60, win_name, font);
 }
 
-/*virtual*/void   Window::mousePressEvent(QMouseEvent* pe)
+void Window::mousePressEvent(QMouseEvent* pe)
 {
     m_ptPosition = pe->pos();
 }
 
-/*virtual*/void   Window::mouseMoveEvent(QMouseEvent* pe)
+void Window::mouseMoveEvent(QMouseEvent* pe)
 {
     m_xRotate += 180 * (GLfloat)(pe->y() - m_ptPosition.y()) / height();
     m_zRotate += 180 * (GLfloat)(pe->x() - m_ptPosition.x()) / width();
@@ -139,38 +116,152 @@ int Window::parse_command_line(int argc, char *argv[])
 
     m_ptPosition = pe->pos();
 }
-void   Window::drawAxis()
+void Window::drawAxis()
 {
     glLineWidth(1.0f);
 
     qglColor(Qt::red);
     glBegin(GL_LINES);
 
-        glVertex3f( 1.0f,  0.0f,  0.0f);
-        glVertex3f(-1.0f,  0.0f,  0.0f);
+        glVertex3f(a - 1,  0.0f,  0.0f);
+        glVertex3f(b + 1,  0.0f,  0.0f);
 
-        qglColor(Qt::black);
+        qglColor(Qt::blue);
 
-        glVertex3f( 0.0f,  1.0f,  0.0f);
-        glVertex3f( 0.0f, -1.0f,  0.0f);
+        glVertex3f( 0.0f,  d + 1,  0.0f);
+        glVertex3f( 0.0f, c - 1,  0.0f);
 
-        glVertex3f( 0.0f,  0.0f,  1.0f);
-        glVertex3f( 0.0f,  0.0f, -1.0f);
+        qglColor(Qt::green);
+
+        glVertex3f( 0.0f,  0.0f,  1.0);
+        glVertex3f( 0.0f,  0.0f, -1.0);
     glEnd();
 }
 
-GLuint Window::drawGraph(double(*f)(double, double))
+
+void Window::change_func()
+{
+//  if (fromFile)
+  {
+//       f_name = "Data from file";
+//       update();
+//       return;
+  }
+  func_id = (func_id + 1) % 4;
+
+  switch (func_id)
+  {
+      case 0:
+        f_name = "f(x, y) = x + 2 * y + 1";
+        f = f_0;
+        dfx = dfx_0;
+        dfy = dfy_0;
+        break;
+      case 1:
+        f_name = "f(x, y) = x * x * x + y * y";
+        f = f_1;
+        dfx = dfx_1;
+        dfy = dfy_1;
+        break;
+      case 2:
+        f_name = "f(x, y) = tanh(x) * y";
+        f = f_2;
+        dfx = dfx_2;
+        dfy = dfy_2;
+        break;
+      case 3:
+        f_name = "f(x, y) = exp(2 * x) * sin(5 * y) / (3 + x + y * y)";
+        f = f_3;
+        dfx = dfx_3;
+        dfy = dfy_3;
+        break;
+    }
+
+    calculate();
+    updateGL();
+}
+
+void Window::doublePoints()
+{
+    if (fromFile)
+        return;
+    if (n * 2 < 200 && m * 2 < 200)
+    {
+        m *= 2;
+        n *= 2;
+        calculate();
+        updateGL();
+    }
+}
+
+void Window::halvePoints()
+{
+    if (fromFile)
+        return;
+
+    if (n / 2 > 1 && m / 2 > 1)
+    {
+        n /= 2;
+        m /= 2;
+        calculate();
+        updateGL();
+    }
+}
+
+void Window::closer()
+{
+    scale -= 0.1;
+    updateGL();
+}
+
+void Window::further()
+{
+    scale += 0.1;
+    updateGL();
+}
+
+void Window::change_win()
+{
+    win_number = (win_number + 1) % 3;
+    switch(win_number)
+    {
+        case 0:
+            win_name = "Original function";
+            break;
+        case 1:
+            win_name = "Chebyshov least square method";
+            break;
+        case 2:
+            win_name = "Cubic splines method";
+            break;
+    }
+    updateGL();
+}
+
+void Window::enable_original()
+{
+    plot_original = (plot_original + 1) % 2;
+    updateGL();
+    qDebug() << plot_original;
+}
+
+GLuint Window::drawGraph(double(*f)(double, double), QColor color)
 {
     GLuint list = glGenLists(1);
-    glNewList(list, GL_COMPILE);
-            qglColor(Qt::red);
-            double delta_x = (b - a) / (n - 1);
-            double delta_y = (d - c) / (m - 1);
 
-            for (int i = 0; i < n - 1; i++)
+    int grid_split1 = (b - a) / 0.05;
+    int grid_split2 = (d - c) / 0.05;
+    int split = width();
+
+    glNewList(list, GL_COMPILE);
+            qglColor(color);
+            double delta_x = (b - a) / (split - 1);
+            double delta_y = (d - c) / (split - 1);
+
+            for (int i = 0; i < split - 1; i++)
             {
                 glBegin(GL_QUADS);
-                for (int j = 0; j < m - 1; j++)
+                for (int j = 0; j < split - 1; j++)
                 {
                     double x1 = a + delta_x * i;
                     double x2 = a + delta_x * (i + 1);
@@ -185,10 +276,10 @@ GLuint Window::drawGraph(double(*f)(double, double))
             }
             glLineWidth(1.5f);
             qglColor(Qt::black);
-            for (int i = 0; i < n; i++)
+            for (int i = 0; i < split; i += grid_split1)
             {
                 glBegin(GL_LINE_STRIP);
-                for (int j = 0; j < m; j++)
+                for (int j = 0; j < split; j++)
                 {
                     double x = a + delta_x * i;
                     double y = c + delta_y * j;
@@ -197,10 +288,10 @@ GLuint Window::drawGraph(double(*f)(double, double))
                glEnd();
 
             }
-            for (int j = 0; j < m; j++)
+            for (int j = 0; j < split; j += grid_split2)
             {
                 glBegin(GL_LINE_STRIP);
-                for (int i = 0; i < n; i++)
+                for (int i = 0; i < split; i++)
                 {
                     double x = a + delta_x * i;
                     double y = c + delta_y * j;
@@ -213,55 +304,121 @@ GLuint Window::drawGraph(double(*f)(double, double))
     return list;
 }
 
-GLuint Window::drawGraph(double *x, double *y, double *values, int n, int m)
-{
-    a = x[0];
-    b = x[n - 1];
-    c = y[0];
-    d = y[n - 1];
 
+GLuint Window::drawGraph(abstractMethod & algo, QColor color)
+{
     GLuint list = glGenLists(1);
 
+    int grid_split1 = (b - a) / 0.05;
+    int grid_split2 = (d - c) / 0.05;
+    int split = width();
+
     glNewList(list, GL_COMPILE);
-            qglColor(Qt::green);
+            qglColor(color);
+            double delta_x = (b - a) / (split - 1);
+            double delta_y = (d - c) / (split - 1);
 
-
-            for (int i = 0; i < n - 1; i++)
+            for (int i = 0; i < split - 1; i++)
             {
                 glBegin(GL_QUADS);
-                for (int j = 0; j < m - 1; j++)
+                for (int j = 0; j < split - 1; j++)
                 {
-                    glVertex3f(x[i], y[j], values[i + j * n]);
-                    glVertex3f(x[i], y[j + 1], values[i + (j + 1) * n]);
-                    glVertex3f(x[i + 1], y[j + 1], values[i + 1 + (j + 1) * n]);
-                    glVertex3f(x[i + 1], y[j], values[i + 1 + j * n]);
+                    double x1 = a + delta_x * i;
+                    double x2 = a + delta_x * (i + 1);
+                    double y1 = c + delta_y * j;
+                    double y2 = c + delta_y * (j + 1);
+                    glVertex3f(x1, y1, algo.method_compute2v(x1, y1));
+                    glVertex3f(x1, y2, algo.method_compute2v(x1, y2));
+                    glVertex3f(x2, y2, algo.method_compute2v(x2, y2));
+                    glVertex3f(x2, y1, algo.method_compute2v(x2, y1));
                 }
                 glEnd();
             }
             glLineWidth(1.5f);
             qglColor(Qt::black);
-            for (int i = 0; i < n; i++)
+            for (int i = 0; i < split; i += grid_split1)
             {
                 glBegin(GL_LINE_STRIP);
-                for (int j = 0; j < m; j++)
+                for (int j = 0; j < split; j++)
                 {
-                    glVertex3f(x[i], y[j], values[i + j * n]);
+                    double x = a + delta_x * i;
+                    double y = c + delta_y * j;
+                    glVertex3f(x, y, algo.method_compute2v(x, y));
                }
                glEnd();
 
             }
-            for (int j = 0; j < m; j++)
+            for (int j = 0; j < split; j += grid_split2)
             {
                 glBegin(GL_LINE_STRIP);
-                for (int i = 0; i < n; i++)
+                for (int i = 0; i < split; i++)
                 {
-                    glVertex3f(x[i], y[j], values[i + j * n]);
+                    double x = a + delta_x * i;
+                    double y = c + delta_y * j;
+                    glVertex3f(x, y, algo.method_compute2v(x, y));
                 }
                 glEnd();
             }
     glEndList();
 
     return list;
+}
+
+void Window::calculate()
+{
+    double delta_x = (b - a) / (n - 1);
+    double delta_y = (d - c) / (m - 1);
+
+    for (int i = 0; i < n; i++)
+        x[i] = a + i * delta_x;
+    for (int j = 0; j < m; j++)
+        y[j] = c + j * delta_y;
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < m; j++)
+        {
+            values[i + j * n] = f(x[i], y[j]);
+        }
+
+    for (int j = 0; j < m; j++)
+    {
+        derx[0 * m + j] = dfx(x[0], y[j]);
+        derx[1 * m + j] = dfx(x[n - 1], y[j]);
+    }
+
+    for (int i = 0; i < n; i++)
+    {
+        dery[0 * n + i] = dfy(x[i], y[0]);
+        dery[1 * n + i] = dfy(x[i], y[n - 1]);
+    }
+
+    ChebyshovLSM algo1(a, b, n, NULL, NULL, N, c, d, m);
+    cubicSplines algo2(a, b, n, x, NULL, NULL, c, d, m, y);
+
+    algo1.method_init2v(x, y, values, n, m, N);
+    algo2.method_init2v(x, y, values, n, m, derx, dery);
+
+
+    delta_x = (b - a) / (n - 1);
+    delta_y = (d - c) / (m - 1);
+
+    for (int i = 0; i < n; i++)
+        x[i] = a + i * delta_x;
+    for (int j = 0; j < m; j++)
+        y[j] = c + j * delta_y;
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < m; j++)
+        {
+            values[i + j * n] = f(x[i], y[j]);
+            valuesAlgo1[i + j * n] = algo1.method_compute2v(x[i], y[j]);
+            valuesAlgo2[i + j * n] = algo2.method_compute2v(x[i], y[j]);
+        }
+    graph[0] = drawGraph(f, QColor(200, 200, 50));
+    graph[1] = drawGraph(algo1, QColor(100, 200, 50));
+    graph[2] = drawGraph(algo2, QColor(100, 50, 100));
+
+    /*    graph[1] = drawGraph(x, y, valuesAlgo1, n, m, QColor(100, 200, 50));
+    graph[2] = drawGraph(x, y, valuesAlgo2, n, m, QColor(100, 50, 100));
+*/
 }
 
 int Window::initValues()
@@ -270,7 +427,7 @@ int Window::initValues()
     {
         double delta_x = (b - a) / (n - 1);
         double delta_y = (d - c) / (m - 1);
-        double *x, *y, *values;
+        double *x, *y;
         x = new double[n];
         y = new double[m];
         values = new double[n * m];
@@ -297,7 +454,7 @@ int Window::initValues()
             for (int i = 0; i < n; i++)
             {
 /*                fin >> x[i];
-                fin >> values[i];a
+                fin >> valuesAlgo1[i];a
 */            }
 /*            fin  >> der[0];
             fin >> der[1];
@@ -310,68 +467,4 @@ int Window::initValues()
     return 0;
 }
 
-void Window::change_func()
-{
-//  if (fromFile)
-  {
-//       f_name = "Data from file";
-//       update();
-//       return;
-  }
-  func_id = (func_id + 1) % 3;
 
-  switch (func_id)
-  {
-      case 0:
-//        f_name = "f (x) = x";
-        f = f_0;
-//        df = df_0;
-        break;
-      case 1:
-//        f_name = "f (x) = x * x * x";
-        f = f_1;
-//        df = df_1;
-        break;
-      case 2:
-//        f_name = "f (x) = Sin(x) / Sqrt(1 + x*x)";
-        f = f_2;
-//        df = df_2;
-        break;
-    }
-    update ();
-}
-
-void Window::calculate()
-{
-    double delta_x = (b - a) / (n - 1);
-    double delta_y = (d - c) / (m - 1);
-
-    ChebyshovLSM algo(a, b, n, NULL, NULL, N, c, d, m);
-
-    for (int i = 0; i < n; i++)
-        x[i] = a + i * delta_x;
-    for (int j = 0; j < m; j++)
-        y[j] = c + j * delta_y;
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < m; j++)
-        {
-            values[i + j * n] = f(x[i], y[j]);
-        }
-
-    algo.method_init2v(x, y, values, n, m, N);
-
-    double size1 = n, size2 = m;
-
-    delta_x = (b - a) / (size1 - 1);
-    delta_y = (d - c) / (size2 - 1);
-
-    for (int i = 0; i < size1; i++)
-        x[i] = a + i * delta_x;
-    for (int j = 0; j < size2; j++)
-        y[j] = c + j * delta_y;
-    for (int i = 0; i < size1; i++)
-        for (int j = 0; j < size2; j++)
-        {
-            values[i + j * n] = algo.method_compute2v(x[i], y[j]);
-        }
-}

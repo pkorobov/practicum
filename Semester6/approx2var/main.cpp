@@ -23,6 +23,7 @@ int main (int argc, char *argv[])
     }
     window->resize(400, 400);
 //    graph_area->resize(400, 400);
+    tool_bar->setMaximumHeight(50);
 
     action = tool_bar->addAction("Change function", graph_area, SLOT(change_func()));
     action->setShortcut(QString("Ctrl+C"));
@@ -30,7 +31,24 @@ int main (int argc, char *argv[])
     action = tool_bar->addAction("Exit", window, SLOT(close()));
     action->setShortcut(QString("Ctrl+X"));
 
-    tool_bar->setMaximumHeight(30);
+    action = tool_bar->addAction("Change window", graph_area, SLOT(change_win()));
+    action->setShortcut(QString("1"));
+
+
+    action = tool_bar->addAction("Plot original", graph_area, SLOT(enable_original()));
+    action->setShortcut(QString("0"));
+
+    action = tool_bar->addAction("Halve points", graph_area, SLOT(halvePoints()));
+    action->setShortcut(QString("Ctrl+O"));
+
+    action = tool_bar->addAction("Double points", graph_area, SLOT(doublePoints()));
+    action->setShortcut(QString("Ctrl+P"));
+
+    action = tool_bar->addAction("Scale increase", graph_area, SLOT(further()));
+    action->setShortcut(QString("Ctrl+U"));
+
+    action = tool_bar->addAction("Scale decrease", graph_area, SLOT(closer()));
+    action->setShortcut(QString("Ctrl+I"));
 
     window->setMenuBar(tool_bar);
     window->setCentralWidget(graph_area);

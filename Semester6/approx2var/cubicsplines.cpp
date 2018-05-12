@@ -2,7 +2,11 @@
 #include <QTime>
 #include <QDebug>
 #include <iostream>
+#include <cmath>
+#include <algorithm>
+#include "functions.h"
 
+using namespace std;
 
 cubicSplines::cubicSplines()
 {
@@ -15,20 +19,18 @@ cubicSplines::~cubicSplines()
     delete[] state;
 }
 
-cubicSplines::cubicSplines(double a_, double b_, int n_, double *x_, double *values_,
-                           double c_, double d_, int m_, double *y_)
-    : abstractMethod(a_, b_, n_, x_, values_, c_, d_, m_)
+cubicSplines::cubicSplines(double a_, double b_, int n_, double *x_, double *derx_, double *values_,
+                           double c_, double d_, int m_, double *y_, double *dery_)
+    : abstractMethod(a_, b_, n_, x_, values_, c_, d_, m_, y_)
 {
     state = new double[4 * n];
     memset(state, 0, 4 * n * sizeof(double));
 }
 
-void cubicSplines::method_init(double *derivatives)
+void cubicSplines::calc_coefficients(double a, double b, double *x, double *values, int n, double * derivatives, double *d)
 {
     double *X;
-    double *d;
 
-    d = new double[n];
     X = new double[n * (n + 1)];
     memset(X, 0, n * (n + 1) * sizeof(double));
 
@@ -45,18 +47,14 @@ void cubicSplines::method_init(double *derivatives)
         X[n * n + i] = 3 * (values[i] - values[i - 1]) / (x[i] - x[i - 1]) * (x[i + 1] - x[i]) +
                        3 * (values[i + 1] - values[i]) / (x[i + 1] - x[i]) * (x[i] - x[i - 1]);
     }
-/*    for (int i = 0; i <= n; i++)
-    {
-        for (int j = 0; j < n; j++)
-            qDebug() << X[i * n + j] << " " << (X + n * n + j);
-        qDebug() << endl;
-    }
-*/    for (int k = 0; k < n; k++)
+
+//    qDebug() << "!!!";
+
+    for (int k = 0; k < n; k++)
         for (int i = k + 1; i < n; i++)
         {
             double t = X[i * n + k] / X[k * n + k];
-//            qDebug() << "[[[[]]]" << t;
-            for (int j = k + 1; j <= n; j++)
+            for (int j = k + 1; j < n; j++)
                 X[i * n + j] -= t * X[k * n + j];
             X[i * n + k] = 0;
 
@@ -70,50 +68,112 @@ void cubicSplines::method_init(double *derivatives)
             d[i] -= d[j] * X[i * n + j];
         d[i] /= X[i * n + i];
     }
-
-/*    for (int i = 0; i < n; i++)
-        qDebug() << d[i];
-*/
-    for (int i = 0; i < n - 1; i++)
-    {
-        state[0 * n + i] = values[i]; //values[i];
-        state[1 * n + i] = d[i];
-        state[2 * n + i] = (3 * (values[i + 1] - values[i]) / (x[i + 1] - x[i]) - 2 * d[i] - d[i + 1]) / (x[i + 1] - x[i]);
-        state[3 * n + i] = (d[i] + d[i + 1] - 2 * (values[i + 1] - values[i]) / (x[i + 1] - x[i])) / (x[i + 1] - x[i]) / (x[i + 1] - x[i]);
-    }
-/*    for (int j = 0; j < 4; j++)
-    {
-        for (int i = 0; i < n; i++)
-            qDebug() << state[j * n + i];
-        qDebug() << "!!!";
-    }
-*/
 }
 
-/*double cubicSplines::method_init2v(double *x, double *y, double *values, int n, int m, int N)
+double cubicSplines::method_init2v(double *x, double *y, double *values, int n, int m, double *derx, double *dery)
 {
-    int L = max(max(m, n), N);
-    gamma = new double[L * L];
-    double a = x[0], b = x[n - 1];
-    double c = y[0], d = y[m - 1];
+    double *Fx, *Fy, *Fxy;
+    int L = max(n, m);
+    Fx = new double[L * L];
+    Fy = new double[L * L];
+    Fxy = new double[L * L];
+    double der[2] = {0, 0};
+
+    for (int j = 0; j < m; j++)
+    {
+        double string[n], res[n];
+
+        der[0] = derx[0 * m + j];
+        der[1] = derx[1 * m + j];
+
+        for (int i = 0; i < n; i++)
+            string[i] = values[i + j * n];
+        calc_coefficients(a, b, x, string, n, der, res);
+//Решение при фиксированныех у
+        for (int i = 0; i < n; i++)
+            Fx[i + j * n] = res[i];
+    }
+
     for (int i = 0; i < n; i++)
     {
-        double column[m], res[N];
-        for (int k = 0; k < m; k++)
-            column[k] = values[i + k * L];
-        calc_coefficients(a, b, x, column, m, N, res);
-        for (int k = 0; k < N; k++)
-            gamma[i + k * L] = res[k];
+        der[0] = dery[0 * n + i];
+        der[1] = dery[1 * n + i];
+
+        double col[m], res[m];
+        for (int j = 0; j < m; j++)
+            col[j] = values[i + j * n];
+
+        calc_coefficients(c, d, y, col, m, der, res);
+//Решение при фиксированныех х
+        for (int j = 0; j < m; j++)
+            Fy[i + j * n] = res[j];
     }
-    for (int j = 0; j < N; j++)
+
+
+    for (int i = 0; i < n; i++)
     {
-        double string[n], res[N];
-        for (int k = 0; k < n; k++)
-            string[k] = gamma[k + j * L];
-        calc_coefficients(c, d, y, string, n, N, gamma + j * L);
+        der[0] = dery[0 * n + i];
+        der[1] = dery[1 * n + i];
+
+        double col[m], res[m];
+        for (int j = 0; j < m; j++)
+            col[j] = Fx[i + j * n];
+        calc_coefficients(c, d, y, col, m, der, res);
+        for (int j = 0; j < m; j++)
+            Fxy[i + j * n] = res[j];
     }
-}
+/*
+    for (int j = 0; j < m; j++)
+    {
+        der[0] = derx[0 * n + j];
+        der[1] = derx[1 * n + j];
+
+        double col[m], res[m];
+        for (int i = 0; i < n; i++)
+            col[i] = Fy[i + j * n];
+        calc_coefficients(a, b, x, col, n, der, res);
+        for (int i = 0; i < n; i++)
+            Fxy[i + j * n] = res[i];
+    }
 */
+    for (int i = 0; i < n - 1; i++)
+        for (int j = 0; j < m - 1; j++)
+        {
+
+            double h = x[i + 1] - x[i];
+            double A1[16] = {1, 0, 0, 0,
+                        0, 1, 0, 0,
+                        -3/h/h, -2/h, 3/h/h, -1/h,
+                          2/h/h/h, 1/h/h, -2/h/h/h, 1/h/h};
+             h = y[j + 1] - y[j];
+
+             double A2[16] = {1, 0, 0, 0,
+                         0, 1, 0, 0,
+                         -3/h/h, -2/h, 3/h/h, -1/h,
+                           2/h/h/h, 1/h/h, -2/h/h/h, 1/h/h};             
+
+             double Fij[16] = {values[i + j * n], Fy[i + j * n], values[i + (j + 1) * n], Fy[i + (j + 1) * n],
+                           Fx[i + j * n], Fxy[i + j * n], Fx[i + (j + 1) * n], Fxy[i + (j + 1) * n],
+                           values[i + 1 + j * n], Fy[i + 1 + j * n], values[i + 1 + (j + 1) * n], Fy[i + 1 + (j + 1) * n],
+                           Fx[i + 1 + j * n], Fxy[i + 1 + j * n], Fx[i + 1 + (j + 1) * n], Fxy[i + 1 + (j + 1) * n]};
+
+             double res[16];
+/*
+             qDebug() << "Fij" << i << " " << j;
+             for (int k = 0; k < 4; k++)
+                 qDebug() << Fij[0 + k * 4] << Fij[1 + k * 4] << Fij[2 + k * 4] << Fij[3 + k * 4];
+*/
+
+             mult(A1, Fij, res, 4);
+             trans(A2, 4);
+             mult(res, A2, gamma[i][j], 4);
+             trans(gamma[i][j], 4);
+        }
+        delete[] Fx;
+        delete[] Fy;
+        delete[] Fxy;
+}
+
 double cubicSplines::method_compute(double y)
 {
     for (int i = 0; i < n - 1; i++)
@@ -121,6 +181,34 @@ double cubicSplines::method_compute(double y)
         if (x[i] <= y && y <= x[i + 1])
             return state[0 * n + i] + state[1 * n + i] * (y - x[i]) +
             state[2 * n + i] * (y - x[i]) * (y - x[i]) + state[3 * n + i] * (y - x[i]) * (y - x[i]) * (y - x[i]);
+    }
+    return 0;
+}
+
+double cubicSplines::method_compute2v(double x1, double x2)
+{
+    for (int i = 0; i < n - 1; i++)
+    {
+        for (int j = 0; j < m - 1; j++)
+            if (x[i] <= x1 && x1 <= x[i + 1]
+             && y[j] <= x2 && x2 <= y[j + 1])
+             {
+
+                double value = gamma[i][j][0 + 0 * 4] + gamma[i][j][1 + 0 * 4] * (x1 - x[i]) + gamma[i][j][2 + 0 * 4] * (x1 - x[i]) * (x1 - x[i]) +
+                       gamma[i][j][3 + 0 * 4] * (x1 - x[i]) * (x1 - x[i]) * (x1 - x[i]) +
+                       gamma[i][j][0 + 1 * 4] * (x2 - y[j]) + gamma[i][j][0 + 2 * 4] * (x2 - y[j]) * (x2 - y[j]) +
+                       gamma[i][j][0 + 3 * 4] * (x2 - y[j]) * (x2 - y[j]) * (x2 - y[j]) +
+                       gamma[i][j][1 + 1 * 4] * (x1 - x[i]) * (x2 - y[j]) + gamma[i][j][1 + 2 * 4] * (x1 - x[i]) * (x2 - y[j]) * (x2 - y[j]) +
+                       gamma[i][j][1 + 3 * 4] * (x1 - x[i]) * (x2 - y[j]) * (x2 - y[j]) * (x2 - y[j]) +
+                       gamma[i][j][2 + 1 * 4] * (x1 - x[i]) * (x1 - x[i]) * (x2 - y[j]) +
+                       gamma[i][j][2 + 2 * 4] * (x1 - x[i]) * (x1 - x[i]) * (x2 - y[j]) * (x2 - y[j]) +
+                       gamma[i][j][2 + 3 * 4] * (x1 - x[i]) * (x1 - x[i]) * (x2 - y[j]) * (x2 - y[j]) * (x2 - y[j]) +
+                       gamma[i][j][3 + 1 * 4] * (x1 - x[i]) * (x1 - x[i]) * (x1 - x[i]) * (x2 - y[j]) +
+                       gamma[i][j][3 + 2 * 4] * (x1 - x[i]) * (x1 - x[i]) * (x1 - x[i]) * (x2 - y[j]) * (x2 - y[j]) +
+                       gamma[i][j][3 + 3 * 4] * (x1 - x[i]) * (x1 - x[i]) * (x1 - x[i]) * (x2 - y[j]) * (x2 - y[j]) * (x2 - y[j]);
+//                qDebug() << i << j << value;
+                return value;
+            }
     }
     return 0;
 }

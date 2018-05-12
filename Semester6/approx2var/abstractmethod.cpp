@@ -14,6 +14,7 @@ double c_, double d_, int m_, double *y_)
     m = m_;
     c = c_;
     d = d_;
+    x = x_;
     y = y_;
     values = values_;
 }

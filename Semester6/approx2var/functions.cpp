@@ -1,53 +1,93 @@
 #include "functions.h"
-#include "window.h"
 #include <cmath>
-#include <QCoreApplication>
-#include <QDebug>
+#include <algorithm>
+
+void mult(double *a, double *b, double *c, int n)
+{
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+        {
+            c[i * n + j] = 0;
+            for (int k = 0; k < n; k++)
+                c[i * n + j] += a[i * n + k] * b[k * n + j];
+        }
+}
+
+void trans(double *a, int n)
+{
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < i; j++)
+        {
+            std::swap(a[i + j * n], a[j + i * n]);
+        }
+}
 
 double f_0 (double x, double y)
 {
-  return x + 5 * y + 0.5;
+  return x + 2 * y + 1;
 }
 
-double df_0 (double x)
+double dfx_0 (double x, double y)
 {
-
-  return x * 0 + 1;
+  return 1;
 }
+
+
+double dfy_0 (double x, double y)
+{
+  return 2;
+}
+
 
 double f_1 (double x, double y)
 {
   return x * x * x + y * y;
 }
 
-double df_1 (double x, double y)
+double dfx_1 (double x, double y)
 {
-  return sin(x * y) / (1 + x * x + y * y);
+  return 3 * x * x;
+}
+
+double dfy_1 (double x, double y)
+{
+  return 2 * y;
 }
 
 double f_2 (double x, double y)
 {
-  return sin(x * y) / (1 + x * x + y * y);
+    return tanh(x) * y;
 }
 
-double df_2 (double x)
+double dfx_2 (double x, double y)
+{
+  return 0;
+}
+
+double dfy_2 (double x, double y)
+{
+  return 0;
+}
+
+double f_3 (double x, double y)
+{
+  return exp(2 * x) * sin(5 * y) / (3 + x + y * y);
+}
+
+double dfx_3 (double x, double y)
 {
   return ((1 + x * x) * cos(x) - x * sin(x)) / pow(1 + x * x, 1.5);
 }
 
-double f_3 (double x)
+double dfy_3 (double x, double y)
 {
-  return exp(-x*x);
+  return ((1 + x * x) * cos(x) - x * sin(x)) / pow(1 + x * x, 1.5);
 }
 
-double df_3 (double x)
-{
-  return -2 * x * exp(-x*x);
-}
 
 double f_4 (double x)
 {
-  return qAbs(x);
+  return abs(x);
 }
 
 double df_4 (double x)

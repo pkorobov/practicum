@@ -15,6 +15,7 @@ public:
 //    virtual double method_init(double *values) = 0;
 //    virtual double method_compute(double x) = 0;
     virtual ~abstractMethod();
+    virtual double  method_compute2v(double x, double y) = 0;
 };
 
 #endif // ABSTRACTMETHOD_H
