@@ -24,7 +24,7 @@ private:
     double *alpha, *betta, *gamma;
     double f_(double x);
     double U(int n, double x);
-    double T(int n, double x);
+    double T(int n, double x, double a, double b);
     double IntA(int i, double x);
     double IntB(int i, double x);
 };

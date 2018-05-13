@@ -29,13 +29,13 @@ double f_0 (double x, double y)
 
 double dfx_0 (double x, double y)
 {
-  return 1;
+  return 1 + x * 0 + y * 0;
 }
 
 
 double dfy_0 (double x, double y)
 {
-  return 2;
+  return 2 + x * 0 + y * 0;
 }
 
 
@@ -46,12 +46,12 @@ double f_1 (double x, double y)
 
 double dfx_1 (double x, double y)
 {
-  return 3 * x * x;
+  return 3 * x * x + y * 0;
 }
 
 double dfy_1 (double x, double y)
 {
-  return 2 * y;
+  return 2 * y + x * 0;
 }
 
 double f_2 (double x, double y)
@@ -61,12 +61,12 @@ double f_2 (double x, double y)
 
 double dfx_2 (double x, double y)
 {
-  return 0;
+  return y / cosh(x) / cosh(x);
 }
 
 double dfy_2 (double x, double y)
 {
-  return 0;
+  return tanh(x) + y * 0;
 }
 
 double f_3 (double x, double y)
@@ -76,24 +76,29 @@ double f_3 (double x, double y)
 
 double dfx_3 (double x, double y)
 {
-  return ((1 + x * x) * cos(x) - x * sin(x)) / pow(1 + x * x, 1.5);
+  return (exp(2 * x) * (5 + 2 * x + 2 * y * y) * sin(5 * y)) / (3 + x + y * y) / (3 + x + y * y);
 }
 
 double dfy_3 (double x, double y)
 {
-  return ((1 + x * x) * cos(x) - x * sin(x)) / pow(1 + x * x, 1.5);
+  return (exp(2 * x) * (5 * (3 + x + y * y) * cos(5 * y) - 2 * y * sin(5 * y))) / (3 + x + y * y) / (3 + x + y * y);
 }
 
 
-double f_4 (double x)
+double f_4 (double x, double y)
 {
-  return abs(x);
+  return fabs(x) + fabs(y);
 }
 
-double df_4 (double x)
+double dfx_4 (double x, double y)
 {
     if (x > 0)
-      return 1;
+      return 1 + y * 0;
     else
       return -1;
+}
+
+double dfy_4 (double x, double y)
+{
+    return 0 * x * y;
 }

@@ -48,7 +48,7 @@ double ChebyshovLSM::U(int n, double x)
         return 2 * x * U(n - 1, x) - U(n - 2, x);
 }
 
-double ChebyshovLSM::T(int i, double x)
+double ChebyshovLSM::T(int i, double x, double a, double b)
 {
     double z = 2 * (2 * x - (a + b)) / (b - a);
     if (i == 0)
@@ -56,7 +56,7 @@ double ChebyshovLSM::T(int i, double x)
     else if (i == 1)
         return z / 2;
     else
-        return z * T(i - 1, x) - T(i - 2, x);
+        return z * T(i - 1, x, a, b) - T(i - 2, x, a, b);
 }
 
 //Интеграл T_i(x) / (sqrt(1 - x^2)
@@ -177,7 +177,7 @@ void ChebyshovLSM::calc_coefficients(double a, double b, double *x_, double *val
 
 void ChebyshovLSM::method_init2v(double *x, double *y, double *values, int n, int m, int N)
 {
-    int L = max(max(m, n), N);
+    int L = max(max(m, n), N) + 1;
     gamma = new double[L * L];
 //    double a = x[0], b = x[n - 1];
 //    double c = y[0], d = y[m - 1];
@@ -185,14 +185,14 @@ void ChebyshovLSM::method_init2v(double *x, double *y, double *values, int n, in
     {
         double column[m], res[N];
         for (int k = 0; k < m; k++)
-            column[k] = values[i + k * L];
+            column[k] = values[i + k * n];
         calc_coefficients(c, d, y, column, m, N, res);
         for (int k = 0; k < N; k++)
             gamma[i + k * L] = res[k];
     }
     for (int j = 0; j < N; j++)
     {
-        double string[n], res[N];
+        double string[n];
         for (int k = 0; k < n; k++)
             string[k] = gamma[k + j * L];
         calc_coefficients(a, b, x, string, n, N, gamma + j * L);
@@ -203,18 +203,18 @@ double ChebyshovLSM::method_compute(double x)
 {
     double value = 0;
     for (int i = 0; i < N; i++)
-        value += alpha[i] * T(i, x);
+        value += alpha[i] * T(i, x, a, b);
     return value;
 }
 
 double ChebyshovLSM::method_compute2v(double x, double y)
 {
-    int L = max(max(m, n), N);
+    int L = max(max(m, n), N) + 1;
     double value = 0;
     for (int i = 0; i < N; i++)
         for (int j = 0; j < N; j++)
         {
-            value += gamma[i + j * L] * T(i, x) * T(j, y);
+            value += gamma[i + j * L] * T(i, x, a, b) * T(j, y, c, d);
         }
     return value;
 }

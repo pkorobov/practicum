@@ -12,13 +12,12 @@ using namespace std;
 Window::Window(QWidget* pwgt) : QGLWidget(pwgt), m_xRotate(-90), m_zRotate(0)
 {
     a = -1, b = 1, c = -1, d = 1;
-    n = 10, m = 5, N = 5;
+    n = 10, m = 10, N = 5;
     func_id = 2;
     win_number = 0;
     win_name = "Original function";
     plot_original = false;
-    fromFile = false;
-    scale = 3.0f;
+    scale = 1.0f;
 
     int s = 200;
     x = new double[s];
@@ -27,25 +26,22 @@ Window::Window(QWidget* pwgt) : QGLWidget(pwgt), m_xRotate(-90), m_zRotate(0)
 
     derx = new double[2 * s];
     dery = new double[2 * s];
-
-    valuesAlgo1 = new double[s * s];
-    valuesAlgo2 = new double[s * s];
 }
 
+Window::~Window()
+{
+    delete[] x;
+    delete[] y;
+    delete[] values;
+    delete[] derx;
+    delete[] dery;
+}
 
 int Window::parse_command_line(int argc, char *argv[])
 {
   if (argc == 1)
     return 0;
 
-  if (argc == 2)
-  {
-//    QString file = argv[2];
-    fromFile = true;
-    //change_func();
-    filename = argv[1];
-    return 0;
-  }
   if (sscanf(argv[1], "%lf", &a) != 1
     || sscanf(argv[2], "%lf", &b) != 1
     || sscanf(argv[3], "%lf", &c) != 1
@@ -53,7 +49,7 @@ int Window::parse_command_line(int argc, char *argv[])
     || b - a < 1.0e-6 || d - c < 1.0e-6
     || (argc > 6 && (sscanf(argv[5], "%d", &n) != 1 || sscanf(argv[6], "%d", &m) != 1))
     || n <= 0 || m <= 0
-    || (argc > 7 && sscanf(argv[6], "%d", &N) != 1)
+    || (argc > 7 && sscanf(argv[7], "%d", &N) != 1)
     || N <= 0)
     return -2;
   return 0;
@@ -72,7 +68,12 @@ void Window::resizeGL(int nWidth, int nHeight)
     glViewport(0, 0, (GLint)nWidth, (GLint)nHeight);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glFrustum(min(a, c), max(b, d), min(a, c), max(b, d), 1.0, 10.0);
+    double t = max(abs(a), abs(b));
+    t = max(t, abs(c));
+    t = max(t, abs(d));
+    t += 2.0;
+    glOrtho(-t, t, -t, t, -10.0, 10.0);
+//    glFrustum(-t, t, -t, t, 1.0, 100.0);
 }
 
 void Window::paintGL()
@@ -83,24 +84,40 @@ void Window::paintGL()
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glTranslatef(0.0, 0.0, -scale);
+   // glTranslatef(0.0, 0.0, -scale);
 
+    glScalef(scale, scale, scale);
     glRotatef(m_xRotate, 1.0, 0.0, 0.0);
     glRotatef(m_zRotate, 0.0, 0.0, 1.0);
     for (int i = 0; i < 3; i++)
         if (win_number == i)
             glCallList(graph[i]);
+
+    if (win_number == 3)
+        glCallList(graphErr[0]);
+    if (win_number == 4)
+        glCallList(graphErr[1]);
+
     if (win_number > 0 && plot_original)
         glCallList(graph[0]);
 
     QFont font("Decorative", 8, QFont::Normal);
 
-    QString str1, str2;
     qglColor(Qt::black);
 
     renderText(0, 20, f_name, font);
-    renderText(0, 40, "Grid size: " + str1.setNum(n) + "x" + str2.setNum(m), font);
+    if (win_number == 1 || win_number == 3)
+        renderText(0, 40, "Grid size: " + QString::number(n) + "x" + QString::number(m) + ", [" + QString::number(a) + ", " +
+        QString::number(b) + "] x [" + QString::number(c) + ", " + QString::number(d) + "]" + " , N = " + QString::number(N), font);
+    else
+        renderText(0, 40, "Grid size: " + QString::number(n) + "x" + QString::number(m) + ", [" + QString::number(a) + " ," +
+        QString::number(b) + "] x [" + QString::number(c) + ", " + QString::number(d) + "]", font);
+
     renderText(0, 60, win_name, font);
+    if (win_number == 3)
+        renderText(0, 80, "Max absolute error: " + QString::number(maxErr1), font);
+    if (win_number == 4)
+        renderText(0, 80, "Max absolute error: " + QString::number(maxErr2), font);
 }
 
 void Window::mousePressEvent(QMouseEvent* pe)
@@ -116,6 +133,17 @@ void Window::mouseMoveEvent(QMouseEvent* pe)
 
     m_ptPosition = pe->pos();
 }
+
+void Window::wheelEvent(QWheelEvent* pe)
+{
+    if ((pe->delta())>0)
+        scale*=1.1;
+    else if ((pe->delta())<0)
+        scale/=1.1;
+
+    updateGL();
+}
+
 void Window::drawAxis()
 {
     glLineWidth(1.0f);
@@ -141,13 +169,7 @@ void Window::drawAxis()
 
 void Window::change_func()
 {
-//  if (fromFile)
-  {
-//       f_name = "Data from file";
-//       update();
-//       return;
-  }
-  func_id = (func_id + 1) % 4;
+  func_id = (func_id + 1) % 5;
 
   switch (func_id)
   {
@@ -175,16 +197,39 @@ void Window::change_func()
         dfx = dfx_3;
         dfy = dfy_3;
         break;
+      case 4:
+          f_name = "f(x, y) = |x| + |y|";
+          f = f_4;
+          dfx = dfx_4;
+          dfy = dfy_4;
     }
 
     calculate();
     updateGL();
 }
 
+void Window::doubleN()
+{
+    if (N * 2 < 50)
+    {
+        N *= 2;
+        calculate();
+        updateGL();
+    }
+}
+
+void Window::halveN()
+{
+    if (N / 2 > 0)
+    {
+        N /= 2;
+        calculate();
+        updateGL();
+    }
+}
+
 void Window::doublePoints()
 {
-    if (fromFile)
-        return;
     if (n * 2 < 200 && m * 2 < 200)
     {
         m *= 2;
@@ -196,9 +241,6 @@ void Window::doublePoints()
 
 void Window::halvePoints()
 {
-    if (fromFile)
-        return;
-
     if (n / 2 > 1 && m / 2 > 1)
     {
         n /= 2;
@@ -210,19 +252,19 @@ void Window::halvePoints()
 
 void Window::closer()
 {
-    scale -= 0.1;
+    scale /= 1.1;
     updateGL();
 }
 
 void Window::further()
 {
-    scale += 0.1;
+    scale *= 1.1;
     updateGL();
 }
 
 void Window::change_win()
 {
-    win_number = (win_number + 1) % 3;
+    win_number = (win_number + 1) % 5;
     switch(win_number)
     {
         case 0:
@@ -234,6 +276,12 @@ void Window::change_win()
         case 2:
             win_name = "Cubic splines method";
             break;
+        case 3:
+            win_name = "Error 1";
+            break;
+        case 4:
+            win_name = "Error 2";
+            break;
     }
     updateGL();
 }
@@ -242,7 +290,6 @@ void Window::enable_original()
 {
     plot_original = (plot_original + 1) % 2;
     updateGL();
-    qDebug() << plot_original;
 }
 
 GLuint Window::drawGraph(double(*f)(double, double), QColor color)
@@ -409,62 +456,75 @@ void Window::calculate()
         for (int j = 0; j < m; j++)
         {
             values[i + j * n] = f(x[i], y[j]);
-            valuesAlgo1[i + j * n] = algo1.method_compute2v(x[i], y[j]);
-            valuesAlgo2[i + j * n] = algo2.method_compute2v(x[i], y[j]);
         }
     graph[0] = drawGraph(f, QColor(200, 200, 50));
     graph[1] = drawGraph(algo1, QColor(100, 200, 50));
     graph[2] = drawGraph(algo2, QColor(100, 50, 100));
 
-    /*    graph[1] = drawGraph(x, y, valuesAlgo1, n, m, QColor(100, 200, 50));
-    graph[2] = drawGraph(x, y, valuesAlgo2, n, m, QColor(100, 50, 100));
-*/
+    graphErr[0] = drawError(f, algo1, QColor(100, 200, 50), maxErr1);
+    graphErr[1] = drawError(f, algo2, QColor(100, 50, 100), maxErr2);
 }
 
-int Window::initValues()
+GLuint Window::drawError(double(*f)(double, double), abstractMethod & algo, QColor color, double & maxErr)
 {
-    if (!fromFile)
-    {
-        double delta_x = (b - a) / (n - 1);
-        double delta_y = (d - c) / (m - 1);
-        double *x, *y;
-        x = new double[n];
-        y = new double[m];
-        values = new double[n * m];
-        for (int i = 0; i < n - 1; i++)
-            x[i] = a + i * delta_x;
-        for (int j = 0; j < m - 1; j++)
-            y[j] = c + j * delta_y;
-        for (int i = 0; i < n; i++)
-            for (int j = 0; j < m; j++)
+    maxErr = 0;
+
+    GLuint list = glGenLists(1);
+
+    int grid_split1 = (b - a) / 0.05;
+    int grid_split2 = (d - c) / 0.05;
+    int split = width();
+
+    glNewList(list, GL_COMPILE);
+            qglColor(color);
+            double delta_x = (b - a) / (split - 1);
+            double delta_y = (d - c) / (split - 1);
+
+            for (int i = 0; i < split - 1; i++)
             {
-                values[i + j * n] = f(x[i], y[j]);
+                glBegin(GL_QUADS);
+                for (int j = 0; j < split - 1; j++)
+                {
+                    double x1 = a + delta_x * i;
+                    double x2 = a + delta_x * (i + 1);
+                    double y1 = c + delta_y * j;
+                    double y2 = c + delta_y * (j + 1);
+                    glVertex3f(x1, y1, abs(f(x1, y1) - algo.method_compute2v(x1, y1)));
+                    glVertex3f(x1, y2, abs(f(x1, y2) - algo.method_compute2v(x1, y2)));
+                    glVertex3f(x2, y2, abs(f(x2, y2) - algo.method_compute2v(x2, y2)));
+                    glVertex3f(x2, y1, abs(f(x2, y1) - algo.method_compute2v(x2, y1)));
+
+                    maxErr = max(maxErr, abs(f(x1, y1) - algo.method_compute2v(x1, y1)));
+                }
+                glEnd();
             }
-
-//        der[0] = df(x[0]);
-//        der[1] = df(x[n - 1]);
-    }
-    else
-    {
-        QFile fileIn(filename);
-        if(fileIn.open(QIODevice::ReadOnly))
-        {
-            QTextStream fin(&fileIn);
-            fin >> n >> N;
-            for (int i = 0; i < n; i++)
+            glLineWidth(1.5f);
+            qglColor(Qt::black);
+            for (int i = 0; i < split; i += grid_split1)
             {
-/*                fin >> x[i];
-                fin >> valuesAlgo1[i];a
-*/            }
-/*            fin  >> der[0];
-            fin >> der[1];
+                glBegin(GL_LINE_STRIP);
+                for (int j = 0; j < split; j++)
+                {
+                    double x = a + delta_x * i;
+                    double y = c + delta_y * j;
+                    glVertex3f(x, y, abs(f(x, y) - algo.method_compute2v(x, y)));
+               }
+               glEnd();
 
-            a = x[0];
-            b = x[n - 1];
-*/            fileIn.close();
-        }
-    }
-    return 0;
+            }
+            for (int j = 0; j < split; j += grid_split2)
+            {
+                glBegin(GL_LINE_STRIP);
+                for (int i = 0; i < split; i++)
+                {
+                    double x = a + delta_x * i;
+                    double y = c + delta_y * j;
+                    glVertex3f(x, y, abs(f(x, y) - algo.method_compute2v(x, y)));
+                }
+                glEnd();
+            }
+    glEndList();
+
+    return list;
 }
-
 

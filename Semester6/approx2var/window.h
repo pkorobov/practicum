@@ -13,16 +13,16 @@ private:
     int n, m, N, size1, size2;
     double scale;
     double a, b, c, d;
-    double *x, *y, *values, *valuesAlgo1, *valuesAlgo2, *derx, *dery;
-    bool fromFile, plot_original;
+    double *x, *y, *values, *derx, *dery;
+    double maxErr1, maxErr2;
+    bool plot_original;
     double(*f)(double, double);
     double(*dfx)(double, double);
     double(*dfy)(double, double);
 
-    QString filename;
     QString f_name;
     QString win_name;
-    GLuint  graph[3];
+    GLuint  graph[3], graphErr[2];
     GLfloat m_xRotate;
     GLfloat m_zRotate;
     QPoint  m_ptPosition;
@@ -37,17 +37,21 @@ protected:
     virtual void paintGL();
     virtual void mousePressEvent(QMouseEvent* pe);
     virtual void mouseMoveEvent (QMouseEvent* pe);
+    virtual void wheelEvent(QWheelEvent* pe);
+
     void drawAxis();
     GLuint drawGraph(double(*f)(double, double), QColor color);
     GLuint drawGraph(abstractMethod & algo, QColor color);
-    GLuint drawGraph(double *x, double *y, double *values, int n, int m, QColor color);
+    GLuint drawError(double(*f)(double, double), abstractMethod & algo, QColor color, double & maxErr);
 
 public:
     int parse_command_line(int argc, char *argv[]);
     Window(QWidget* pwgt = 0);
-    virtual ~Window(){}
+    ~Window();
 
 public slots:
+    void doubleN();
+    void halveN();
     void enable_original();
     void change_win();
     void change_func();

@@ -5,6 +5,7 @@
 #include <QAction>
 #include <QMenuBar>
 #include <QMessageBox>
+#include "QDebug"
 
 #include "window.h"
 
@@ -15,6 +16,8 @@ int main (int argc, char *argv[])
     QMenuBar *tool_bar = new QMenuBar(window);
     Window *graph_area = new Window(window);
     QAction *action;
+
+
 
     if (graph_area->parse_command_line(argc, argv))
     {
@@ -50,10 +53,20 @@ int main (int argc, char *argv[])
     action = tool_bar->addAction("Scale decrease", graph_area, SLOT(closer()));
     action->setShortcut(QString("Ctrl+I"));
 
+    action = tool_bar->addAction("Double N", graph_area, SLOT(doubleN()));
+    action->setShortcut(QString("Ctrl+N"));
+
+    action = tool_bar->addAction("Halve N", graph_area, SLOT(halveN()));
+    action->setShortcut(QString("Ctrl+M"));
+
     window->setMenuBar(tool_bar);
     window->setCentralWidget(graph_area);
     window->setWindowTitle("Graph");
 
     window->show();
+
+    qDebug() << "Ctrl+X - exit, Ctrl+C - change function, 1 - change window, Ctrl+P - double points";
+    qDebug() << "Ctrl+O - halve points, Ctrl+U - scale increase, Ctrl+I - scale decrease";
+
     return app.exec();
 }

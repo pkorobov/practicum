@@ -23,11 +23,13 @@ cubicSplines::cubicSplines(double a_, double b_, int n_, double *x_, double *der
                            double c_, double d_, int m_, double *y_, double *dery_)
     : abstractMethod(a_, b_, n_, x_, values_, c_, d_, m_, y_)
 {
+    derx = derx_;
+    dery = dery_;
     state = new double[4 * n];
     memset(state, 0, 4 * n * sizeof(double));
 }
 
-void cubicSplines::calc_coefficients(double a, double b, double *x, double *values, int n, double * derivatives, double *d)
+void cubicSplines::calc_coefficients(double *x, double *values, int n, double * derivatives, double *d)
 {
     double *X;
 
@@ -39,6 +41,7 @@ void cubicSplines::calc_coefficients(double a, double b, double *x, double *valu
 
     X[(n - 1) * n + (n - 1)] = 1;
     X[n * n + (n - 1)] = derivatives[1];
+
     for (int i = 1; i < n - 1; i++)
     {
         X[i * n + (i - 1)] = x[i + 1] - x[i];
@@ -47,8 +50,6 @@ void cubicSplines::calc_coefficients(double a, double b, double *x, double *valu
         X[n * n + i] = 3 * (values[i] - values[i - 1]) / (x[i] - x[i - 1]) * (x[i + 1] - x[i]) +
                        3 * (values[i + 1] - values[i]) / (x[i + 1] - x[i]) * (x[i] - x[i - 1]);
     }
-
-//    qDebug() << "!!!";
 
     for (int k = 0; k < n; k++)
         for (int i = k + 1; i < n; i++)
@@ -70,7 +71,7 @@ void cubicSplines::calc_coefficients(double a, double b, double *x, double *valu
     }
 }
 
-double cubicSplines::method_init2v(double *x, double *y, double *values, int n, int m, double *derx, double *dery)
+void cubicSplines::method_init2v(double *x, double *y, double *values, int n, int m, double *derx, double *dery)
 {
     double *Fx, *Fy, *Fxy;
     int L = max(n, m);
@@ -88,7 +89,7 @@ double cubicSplines::method_init2v(double *x, double *y, double *values, int n, 
 
         for (int i = 0; i < n; i++)
             string[i] = values[i + j * n];
-        calc_coefficients(a, b, x, string, n, der, res);
+        calc_coefficients(x, string, n, der, res);
 //Решение при фиксированныех у
         for (int i = 0; i < n; i++)
             Fx[i + j * n] = res[i];
@@ -103,7 +104,7 @@ double cubicSplines::method_init2v(double *x, double *y, double *values, int n, 
         for (int j = 0; j < m; j++)
             col[j] = values[i + j * n];
 
-        calc_coefficients(c, d, y, col, m, der, res);
+        calc_coefficients(y, col, m, der, res);
 //Решение при фиксированныех х
         for (int j = 0; j < m; j++)
             Fy[i + j * n] = res[j];
@@ -118,24 +119,11 @@ double cubicSplines::method_init2v(double *x, double *y, double *values, int n, 
         double col[m], res[m];
         for (int j = 0; j < m; j++)
             col[j] = Fx[i + j * n];
-        calc_coefficients(c, d, y, col, m, der, res);
+        calc_coefficients(y, col, m, der, res);
         for (int j = 0; j < m; j++)
             Fxy[i + j * n] = res[j];
     }
-/*
-    for (int j = 0; j < m; j++)
-    {
-        der[0] = derx[0 * n + j];
-        der[1] = derx[1 * n + j];
 
-        double col[m], res[m];
-        for (int i = 0; i < n; i++)
-            col[i] = Fy[i + j * n];
-        calc_coefficients(a, b, x, col, n, der, res);
-        for (int i = 0; i < n; i++)
-            Fxy[i + j * n] = res[i];
-    }
-*/
     for (int i = 0; i < n - 1; i++)
         for (int j = 0; j < m - 1; j++)
         {
@@ -187,6 +175,12 @@ double cubicSplines::method_compute(double y)
 
 double cubicSplines::method_compute2v(double x1, double x2)
 {
+    x1 = min(x1, b);
+    x1 = max(x1, a);
+
+    x2 = min(x2, d);
+    x2 = max(x2, c);
+
     for (int i = 0; i < n - 1; i++)
     {
         for (int j = 0; j < m - 1; j++)
