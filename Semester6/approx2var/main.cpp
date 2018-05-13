@@ -37,6 +37,8 @@ int main (int argc, char *argv[])
     action = tool_bar->addAction("Change window", graph_area, SLOT(change_win()));
     action->setShortcut(QString("1"));
 
+    action = tool_bar->addAction("Add delta", graph_area, SLOT(enable_delta()));
+    action->setShortcut(QString("Ctrl+D"));
 
     action = tool_bar->addAction("Plot original", graph_area, SLOT(enable_original()));
     action->setShortcut(QString("0"));

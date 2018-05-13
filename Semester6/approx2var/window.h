@@ -15,7 +15,7 @@ private:
     double a, b, c, d;
     double *x, *y, *values, *derx, *dery;
     double maxErr1, maxErr2;
-    bool plot_original;
+    bool plot_original, add_delta;
     double(*f)(double, double);
     double(*dfx)(double, double);
     double(*dfy)(double, double);
@@ -50,6 +50,7 @@ public:
     ~Window();
 
 public slots:
+    void enable_delta();
     void doubleN();
     void halveN();
     void enable_original();

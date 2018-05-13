@@ -6,17 +6,21 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QFont>
+#include <time.h>
 
 using namespace std;
 
 Window::Window(QWidget* pwgt) : QGLWidget(pwgt), m_xRotate(-90), m_zRotate(0)
 {
+    srand(time(NULL));
+
     a = -1, b = 1, c = -1, d = 1;
     n = 10, m = 10, N = 5;
     func_id = 2;
     win_number = 0;
     win_name = "Original function";
     plot_original = false;
+    add_delta = false;
     scale = 1.0f;
 
     int s = 200;
@@ -292,6 +296,13 @@ void Window::enable_original()
     updateGL();
 }
 
+void Window::enable_delta()
+{
+    add_delta = (add_delta + 1) % 2;
+    calculate();
+    updateGL();
+}
+
 GLuint Window::drawGraph(double(*f)(double, double), QColor color)
 {
     GLuint list = glGenLists(1);
@@ -425,6 +436,11 @@ void Window::calculate()
         {
             values[i + j * n] = f(x[i], y[j]);
         }
+
+    int rand_i = rand() % n;
+    int rand_j = rand() % m;
+    if (add_delta)
+        values[rand_i + rand_j * n] += 1;
 
     for (int j = 0; j < m; j++)
     {
